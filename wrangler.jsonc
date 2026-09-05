@@ -1,13 +1,19 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dback-fitness",
-  "main": "src/worker-production.js",
+  "main": "src/worker-v5.js",
   "compatibility_date": "2026-08-11",
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "dback-fitness-coach",
       "database_id": "5dc35f6b-5391-4d43-a717-e5ca4682b6fe"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "dback-fitness-media"
     }
   ]
 }
