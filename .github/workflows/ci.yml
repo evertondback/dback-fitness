@@ -8,7 +8,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,3 +16,24 @@ jobs:
           node-version: '22'
       - run: npm install
       - run: npm run validate
+
+  live-mobile-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e:mobile
+        env:
+          DBACK_LIVE_URL: https://dback-fitness.dback.workers.dev
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-qa-screenshots
+          path: artifacts/mobile-qa
+          if-no-files-found: ignore
