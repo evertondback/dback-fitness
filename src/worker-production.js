@@ -1,7 +1,8 @@
-import app from './worker-v8.js';
+import app from './worker-v8-1.js';
 
 function patchHtml(html) {
   let out = html;
+  out = out.replaceAll('7.0.1','8.0.1').replaceAll('7.0.2','8.0.1').replaceAll('8.0.0','8.0.1');
   out = out.replace("Start Today's Workout", "Start Today Workout");
   out = out.replace('<div id=videoDock class="videoDock normal">', '<div id=videoDock class="videoDock">');
   out = out.replace(
