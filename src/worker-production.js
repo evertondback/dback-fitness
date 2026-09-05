@@ -1,8 +1,8 @@
-import app from './worker-v9.js';
+import app from './worker-v10.js';
 
 function patchHtml(html) {
   let out = html;
-  out = out.replaceAll('7.0.1','8.1.0').replaceAll('7.0.2','8.1.0').replaceAll('8.0.0','8.1.0').replaceAll('8.0.1','8.1.0');
+  out = out.replaceAll('7.0.1','9.0.0').replaceAll('7.0.2','9.0.0').replaceAll('8.0.0','9.0.0').replaceAll('8.0.1','9.0.0').replaceAll('8.1.0','9.0.0');
   out = out.replace("Start Today's Workout", "Start Today Workout");
   out = out.replace('<div id=videoDock class="videoDock normal">', '<div id=videoDock class="videoDock">');
   out = out.replace(
