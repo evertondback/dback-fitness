@@ -18,43 +18,38 @@ export const ANATOMY26_CSS=`
 
 export const ANATOMY26_JS=`(()=>{
 const NS='http://www.w3.org/2000/svg';
-function unify(canvas){
- if(!canvas||canvas.dataset.db26==='1')return false;
- const img=canvas.querySelector(':scope>img');
- const old=canvas.querySelector(':scope>svg');
- if(!img||!old)return false;
- const src=img.currentSrc||img.src;
- if(!src)return false;
- const svg=document.createElementNS(NS,'svg');
- svg.setAttribute('class','db26Unified');
- svg.setAttribute('viewBox','0 0 1000 1400');
- svg.setAttribute('preserveAspectRatio','xMidYMid meet');
- svg.setAttribute('role','img');
- svg.setAttribute('aria-label','Interactive muscular anatomy');
- const image=document.createElementNS(NS,'image');
- image.setAttribute('href',src);
- image.setAttribute('x','0'); image.setAttribute('y','0'); image.setAttribute('width','1000'); image.setAttribute('height','1400');
- image.setAttribute('preserveAspectRatio','xMidYMid meet');
- svg.appendChild(image);
- [...old.childNodes].forEach(n=>svg.appendChild(n));
- old.replaceWith(svg); img.remove();
- canvas.dataset.db26='1';
- const status=document.createElement('div');status.className='db26Status';status.textContent='Unified anatomical coordinate map';canvas.parentElement?.appendChild(status);
- return true;
+function makeUnified(host,mode='meet'){
+ let u=host.querySelector(':scope>svg.db26Unified');
+ if(u)return u;
+ u=document.createElementNS(NS,'svg');
+ u.setAttribute('class','db26Unified');
+ u.setAttribute('viewBox','0 0 1000 1400');
+ u.setAttribute('preserveAspectRatio',mode==='slice'?'xMidYMid slice':'xMidYMid meet');
+ u.setAttribute('role','img');
+ u.setAttribute('aria-label','Interactive muscular anatomy');
+ host.appendChild(u);
+ return u;
 }
-function unifyDetail(root){
- const hero=root?.querySelector('.db25DetailHero'); if(!hero||hero.dataset.db26==='1')return;
- const img=hero.querySelector(':scope>img'),old=hero.querySelector(':scope>svg'); if(!img||!old)return;
- const svg=document.createElementNS(NS,'svg');svg.setAttribute('class','db26Unified');svg.setAttribute('viewBox','0 0 1000 1400');svg.setAttribute('preserveAspectRatio','xMidYMid slice');
- const image=document.createElementNS(NS,'image');image.setAttribute('href',img.currentSrc||img.src);image.setAttribute('x','0');image.setAttribute('y','0');image.setAttribute('width','1000');image.setAttribute('height','1400');image.setAttribute('preserveAspectRatio','xMidYMid slice');svg.appendChild(image);
- [...old.childNodes].forEach(n=>svg.appendChild(n));old.replaceWith(svg);img.remove();hero.dataset.db26='1';
+function syncHost(host,mode='meet'){
+ if(!host)return false;
+ const img=host.querySelector(':scope>img');
+ const old=host.querySelector(':scope>svg:not(.db26Unified)');
+ if(!img||!old)return false;
+ const src=img.currentSrc||img.src;if(!src)return false;
+ const u=makeUnified(host,mode);
+ const markup=old.innerHTML;
+ const image='<image href="'+src.replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'" x="0" y="0" width="1000" height="1400" preserveAspectRatio="'+(mode==='slice'?'xMidYMid slice':'xMidYMid meet')+'"></image>';
+ u.innerHTML=image+markup;
+ u.querySelectorAll('.db25Muscle').forEach(p=>{p.setAttribute('pointer-events','visiblePainted');p.setAttribute('tabindex','0')});
+ host.dataset.db26='1';
+ return true;
 }
 function run(){
  const v=document.querySelector('#view-anatomy');if(!v)return;
- v.querySelectorAll('.db25Canvas').forEach(unify);unifyDetail(v);
- v.querySelectorAll('.db26Unified .db25Muscle').forEach(p=>{p.setAttribute('pointer-events','visiblePainted');p.setAttribute('tabindex','0')});
+ v.querySelectorAll('.db25Canvas').forEach(c=>{if(syncHost(c,'meet')&&!c.parentElement?.querySelector('.db26Status')){const s=document.createElement('div');s.className='db26Status';s.textContent='Unified anatomical coordinate map';c.parentElement?.appendChild(s)}});
+ const hero=v.querySelector('.db25DetailHero');if(hero)syncHost(hero,'slice');
 }
-document.addEventListener('click',()=>setTimeout(run,60),true);
-new MutationObserver(()=>{clearTimeout(window.__db26);window.__db26=setTimeout(run,50)}).observe(document.body,{subtree:true,childList:true});
-addEventListener('resize',run);setTimeout(run,250);setTimeout(run,900);
+document.addEventListener('click',()=>setTimeout(run,40),true);
+new MutationObserver(()=>{clearTimeout(window.__db26);window.__db26=setTimeout(run,35)}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src','class']});
+addEventListener('resize',run);setTimeout(run,180);setTimeout(run,700);
 })();`;
