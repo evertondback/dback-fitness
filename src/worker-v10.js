@@ -4,8 +4,9 @@ import {CSS,CORE_JS} from './v10-ui-core.js';
 import {HISTORY_CSS,HISTORY_JS} from './v10-ui-history.js';
 import {ANATOMY_SORT_CSS,ANATOMY_SORT_JS} from './v10-ui-anatomy.js';
 import {RESPONSIVE_CSS,RESPONSIVE_JS} from './v11-responsive.js';
+import {LAYOUT_HOTFIX_CSS} from './v11-layout-hotfix.js';
 function patch(html){
- let out=html.replaceAll('9.0.2',VERSION).replaceAll('9.0.1',VERSION).replaceAll('8.1.0',VERSION).replaceAll('8.0.1',VERSION).replaceAll('8.0.0',VERSION).replaceAll('7.0.2',VERSION).replaceAll('7.0.1',VERSION).replace('</style>',CSS+HISTORY_CSS+ANATOMY_SORT_CSS+RESPONSIVE_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+ANATOMY_SORT_JS+'</script><script>'+RESPONSIVE_JS+'</script></body>');
+ let out=html.replaceAll('9.0.2',VERSION).replaceAll('9.0.1',VERSION).replaceAll('8.1.0',VERSION).replaceAll('8.0.1',VERSION).replaceAll('8.0.0',VERSION).replaceAll('7.0.2',VERSION).replaceAll('7.0.1',VERSION).replace('</style>',CSS+HISTORY_CSS+ANATOMY_SORT_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+ANATOMY_SORT_JS+'</script><script>'+RESPONSIVE_JS+'</script></body>');
  out=out.replace("const $=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)]","const Q=s=>document.querySelector(s),QA=s=>[...document.querySelectorAll(s)]");
  out=out.replace("nav=n=>$('#nav button,#mobileNav button').find","nav=n=>QA('#nav button,#mobileNav button').find");
  out=out.replaceAll("const v=$('#view-anatomy')","const v=Q('#view-anatomy')");
