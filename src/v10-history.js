@@ -1,4 +1,4 @@
-export const VERSION='9.0.2';
+export const VERSION='9.1.0';
 const C=()=>({'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','access-control-allow-headers':'content-type,accept,mcp-session-id,mcp-protocol-version,last-event-id,authorization','cache-control':'no-store','vary':'Origin, Accept'});
 export const json=(d,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{...C(),'content-type':'application/json;charset=utf-8'}});
 const ts=()=>new Date().toISOString();
