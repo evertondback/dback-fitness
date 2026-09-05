@@ -6,8 +6,9 @@ import {ANATOMY_SORT_CSS,ANATOMY_SORT_JS} from './v10-ui-anatomy.js';
 import {RESPONSIVE_CSS,RESPONSIVE_JS} from './v11-responsive.js';
 import {LAYOUT_HOTFIX_CSS} from './v11-layout-hotfix.js';
 import {EQUIPMENT_LIBRARY_CSS,EQUIPMENT_LIBRARY_JS} from './v12-equipment-library.js';
+import {ANATOMY_SVG_CSS,ANATOMY_SVG_JS} from './v13-anatomy-svg.js';
 function patch(html){
- let out=html.replaceAll('9.1.0',VERSION).replaceAll('9.0.2',VERSION).replaceAll('9.0.1',VERSION).replaceAll('8.1.0',VERSION).replaceAll('8.0.1',VERSION).replaceAll('8.0.0',VERSION).replaceAll('7.0.2',VERSION).replaceAll('7.0.1',VERSION).replace('</style>',CSS+HISTORY_CSS+ANATOMY_SORT_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+EQUIPMENT_LIBRARY_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+ANATOMY_SORT_JS+'</script><script>'+RESPONSIVE_JS+'</script><script>'+EQUIPMENT_LIBRARY_JS+'</script></body>');
+ let out=html.replaceAll('9.2.0',VERSION).replaceAll('9.1.0',VERSION).replaceAll('9.0.2',VERSION).replaceAll('9.0.1',VERSION).replaceAll('8.1.0',VERSION).replaceAll('8.0.1',VERSION).replaceAll('8.0.0',VERSION).replaceAll('7.0.2',VERSION).replaceAll('7.0.1',VERSION).replace('</style>',CSS+HISTORY_CSS+ANATOMY_SORT_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+EQUIPMENT_LIBRARY_CSS+ANATOMY_SVG_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+ANATOMY_SORT_JS+'</script><script>'+RESPONSIVE_JS+'</script><script>'+EQUIPMENT_LIBRARY_JS+'</script><script>'+ANATOMY_SVG_JS+'</script></body>');
  out=out.replace("const $=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)]","const Q=s=>document.querySelector(s),QA=s=>[...document.querySelectorAll(s)]");
  out=out.replace("nav=n=>$('#nav button,#mobileNav button').find","nav=n=>QA('#nav button,#mobileNav button').find");
  out=out.replaceAll("const v=$('#view-anatomy')","const v=Q('#view-anatomy')");
