@@ -1,6 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dback-fitness",
-  "main": "src/index.js",
-  "compatibility_date": "2026-08-11"
+  "main": "src/coach.js",
+  "compatibility_date": "2026-08-11",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dback-fitness-coach",
+      "database_id": "5dc35f6b-5391-4d43-a717-e5ca4682b6fe"
+    }
+  ]
 }
