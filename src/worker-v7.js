@@ -1,4 +1,4 @@
-import base from './worker-v6.js';
+import base from './worker-v6-hotfix.js';
 
 const VERSION='7.0.0';
 const FRONT='https://commons.wikimedia.org/wiki/Special:Redirect/file/Muscular_system.svg';
