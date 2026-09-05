@@ -1,4 +1,4 @@
-import app from './worker-v7.js';
+import app from './worker-v7-final.js';
 
 function patchHtml(html) {
   let out = html;
