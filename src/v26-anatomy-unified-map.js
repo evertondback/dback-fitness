@@ -12,7 +12,20 @@ export const ANATOMY26_CSS=`
 .db25Map{background:radial-gradient(circle at 50% 38%,#0b2a40 0,#061521 56%,#020a12 100%)!important}.db25Callout{backdrop-filter:blur(12px)}
 .db26Status{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:6;font-size:9px;color:#8fb0c7;background:rgba(3,16,26,.76);border:1px solid #1d4b68;border-radius:999px;padding:4px 8px;pointer-events:none;white-space:nowrap}
 .db25DetailHero>img,.db25DetailHero>svg:not(.db26Unified){display:none!important}.db25DetailHero .db26Unified{position:absolute;inset:0;width:100%;height:100%;display:block}
-@media(max-width:720px){.db26Status{bottom:5px}.db25Callout{max-width:128px!important}.db25Stage{height:590px!important}}
+@media(max-width:720px){
+#view-anatomy:has(.db25){position:fixed!important;inset:0!important;z-index:99990!important;width:100vw!important;max-width:none!important;height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;margin:0!important;padding:0!important;background:#03101a!important}
+#view-anatomy .db25{width:100vw!important;max-width:100vw!important;min-height:100dvh!important;padding:6px 6px 82px!important;margin:0!important}
+body:has(#view-anatomy .db25) #nav{display:none!important}
+.db25Top{position:sticky!important;top:0!important;z-index:80!important;padding-top:max(6px,env(safe-area-inset-top))!important}
+.db25Tabs{position:sticky!important;top:58px!important;z-index:75!important}.db25Seg{margin-top:6px!important}
+.db25Map{width:100%!important;max-width:100%!important;border-radius:14px!important}.db25Stage{height:520px!important;width:100%!important}
+.db25Rail{width:50px!important;left:4px!important;top:12px!important;gap:4px!important}.db25Rail button{min-height:47px!important;width:50px!important;padding:3px!important;font-size:8px!important;border-radius:10px!important}.db25Rail button span{font-size:15px!important}
+.db25Callout{right:5px!important;top:80px!important;max-width:120px!important;padding:7px 8px!important;font-size:10px!important}.db25Callout .db25Primary{font-size:10px!important;padding:5px 7px!important}
+.db25Tools{right:4px!important;bottom:24px!important}.db25Tools button{width:42px!important;min-height:42px!important;padding:3px!important;font-size:8px!important}.db25Tools b{font-size:15px!important}
+.db26Status{bottom:4px;font-size:8px}.db25Hint{padding:7px 54px 4px!important;font-size:10px!important}.db25Legend{font-size:9px!important;gap:8px!important}
+.db25Detail{width:100%!important;max-width:100%!important}.db25DetailHero{height:260px!important}.db25Facts{grid-template-columns:1fr!important}.db25Subtabs button{font-size:9px!important}
+}
+@media(max-width:390px){.db25Stage{height:500px!important}.db25Title b{font-size:17px!important}.db25Title span{font-size:10px!important}.db25Tabs button,.db25Seg button{font-size:10px!important}.db25Callout{max-width:108px!important}}
 `;
 
 export const ANATOMY26_JS=`(()=>{
