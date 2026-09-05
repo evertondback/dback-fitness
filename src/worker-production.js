@@ -1,8 +1,9 @@
 import app from './worker-v10.js';
 
+const PRODUCTION_VERSION='31.0.0';
 function patchHtml(html) {
   let out = html;
-  out = out.replaceAll('7.0.1','9.0.0').replaceAll('7.0.2','9.0.0').replaceAll('8.0.0','9.0.0').replaceAll('8.0.1','9.0.0').replaceAll('8.1.0','9.0.0');
+  for (const v of ['7.0.1','7.0.2','8.0.0','8.0.1','8.1.0','9.0.0','9.0.1','9.0.2','9.1.0','9.2.0','9.3.0','9.4.0','9.5.0','9.6.0','9.7.0']) out = out.replaceAll(v,PRODUCTION_VERSION);
   out = out.replace("Start Today's Workout", "Start Today Workout");
   out = out.replace('<div id=videoDock class="videoDock normal">', '<div id=videoDock class="videoDock">');
   out = out.replace(
@@ -22,6 +23,7 @@ export default {
     const html = await response.text();
     const headers = new Headers(response.headers);
     headers.set('cache-control', 'no-store, no-cache, must-revalidate');
+    headers.set('x-dback-build',PRODUCTION_VERSION);
     return new Response(patchHtml(html), { status: response.status, headers });
   }
 };
