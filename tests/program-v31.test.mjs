@@ -46,12 +46,11 @@ test('production worker wires only the current realistic anatomy module and comp
  assert.match(source,/handleV31Api/);
 });
 
-test('v31 API never performs runtime schema DDL',async()=>{
+test('v31 API never performs runtime schema DDL and exposes complete contract',async()=>{
  const source=await readFile(new URL('../src/v31-api.js',import.meta.url),'utf8');
  assert.doesNotMatch(source,/CREATE\s+TABLE/i);
- assert.match(source,/workout_sessions/);
- assert.match(source,/set_logs/);
- assert.match(source,/exercise_state/);
+ for(const table of ['workout_sessions','set_logs','exercise_state'])assert.match(source,new RegExp(table));
+ for(const route of ['/api/v31/health','/api/v31/program','/api/v31/session/start','/api/v31/session/log','/api/v31/session/complete','/api/v31/history','/api/v31/progress'])assert.ok(source.includes(route),route);
 });
 
 test('production shell is stamped as v31 and disables caching',async()=>{
@@ -59,4 +58,23 @@ test('production shell is stamped as v31 and disables caching',async()=>{
  assert.match(source,/PRODUCTION_VERSION='31\.0\.0'/);
  assert.match(source,/no-store, no-cache, must-revalidate/);
  assert.match(source,/x-dback-build/);
+});
+
+test('workout and full-plan UI has desktop, tablet and phone responsive contracts',async()=>{
+ const source=await readFile(new URL('../src/v31-completion-ui.js',import.meta.url),'utf8');
+ assert.match(source,/@media\(max-width:900px\)/);
+ assert.match(source,/@media\(max-width:600px\)/);
+ assert.match(source,/grid-template-columns:1fr/);
+ assert.match(source,/db31Days/);
+ assert.match(source,/data-db31-day/);
+});
+
+test('anatomy UI has unified cleanup and mobile full-screen contract',async()=>{
+ const source=await readFile(new URL('../src/v30-anatomy-realistic.js',import.meta.url),'utf8');
+ assert.match(source,/@media\(max-width:720px\)/);
+ assert.match(source,/#view-anatomy>\*:not\(\.db30\)\{display:none!important\}/);
+ assert.match(source,/function clean\(v\)/);
+ assert.match(source,/data-mode="front"/);
+ assert.match(source,/data-mode="back"/);
+ assert.match(source,/data-mode="both"/);
 });
