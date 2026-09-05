@@ -45,3 +45,18 @@ test('production worker wires only the current realistic anatomy module and comp
  assert.match(source,/v31-completion-ui\.js/);
  assert.match(source,/handleV31Api/);
 });
+
+test('v31 API never performs runtime schema DDL',async()=>{
+ const source=await readFile(new URL('../src/v31-api.js',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/CREATE\s+TABLE/i);
+ assert.match(source,/workout_sessions/);
+ assert.match(source,/set_logs/);
+ assert.match(source,/exercise_state/);
+});
+
+test('production shell is stamped as v31 and disables caching',async()=>{
+ const source=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
+ assert.match(source,/PRODUCTION_VERSION='31\.0\.0'/);
+ assert.match(source,/no-store, no-cache, must-revalidate/);
+ assert.match(source,/x-dback-build/);
+});
