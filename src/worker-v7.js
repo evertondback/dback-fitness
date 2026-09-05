@@ -1,11 +1,11 @@
 import base from './worker-v6-hotfix.js';
 
-const VERSION='7.0.0';
+const VERSION='7.0.1';
 const FRONT='https://commons.wikimedia.org/wiki/Special:Redirect/file/Muscular_system.svg';
 const BACK='https://commons.wikimedia.org/wiki/Special:Redirect/file/Muscular_system-back.svg';
 
 const PROFESSIONAL_CSS=`
-.realAnatomyMap{position:relative;width:100%;aspect-ratio:5/7;max-height:680px;margin:8px auto 0;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#17283a 0,#0a1624 58%,#07111f 100%);border:1px solid #314b68;box-shadow:inset 0 0 50px #0007,0 14px 40px #0005}
+html,body{max-width:100%;overflow-x:hidden}.main,.view,.card,.bodyGrid,.bodyPanel,.anatomyLayout{min-width:0;max-width:100%}.realAnatomyMap{position:relative;width:100%;max-width:100%;aspect-ratio:5/7;max-height:680px;margin:8px auto 0;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#17283a 0,#0a1624 58%,#07111f 100%);border:1px solid #314b68;box-shadow:inset 0 0 50px #0007,0 14px 40px #0005}
 .realAnatomyMap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;filter:drop-shadow(0 12px 18px #0008)}
 .mapHotspot{position:absolute;transform:translate(-50%,-50%);border:1px solid transparent;background:rgba(239,68,68,.03);border-radius:50%;cursor:pointer;z-index:4;transition:background .15s,border-color .15s,box-shadow .15s,transform .15s;min-width:18px;min-height:18px}
 .mapHotspot:hover,.mapHotspot:focus-visible{background:rgba(239,68,68,.20);border-color:rgba(248,113,113,.75);box-shadow:0 0 0 3px rgba(239,68,68,.14);outline:none;transform:translate(-50%,-50%) scale(1.05)}
@@ -14,9 +14,10 @@ const PROFESSIONAL_CSS=`
 .mapJoint:hover,.mapJoint:focus-visible{background:rgba(245,158,11,.38);border-color:#fbbf24}
 .mapJoint.selected{background:rgba(34,197,94,.45);border-color:#4ade80;box-shadow:0 0 0 3px rgba(34,197,94,.18),0 0 22px rgba(34,197,94,.35)}
 .mapLegend{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:8px 0 0;font-size:11px;color:#94a3b8}.mapLegend span{display:inline-flex;gap:5px;align-items:center}.mapLegend i{width:9px;height:9px;border-radius:50%;display:inline-block}.mapLegend .m{background:#ff304d}.mapLegend .j{background:#f59e0b}.mapLegend .s{background:#22c55e}
-.atlasCredit{margin:8px 2px 0;text-align:center;color:#64748b;font-size:10px;line-height:1.35}.atlasCredit a{color:#94a3b8}
-.bodyPanel{background:linear-gradient(180deg,#0a1726,#07111f)!important;padding:12px!important}.bodyPanel>b{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1}.human{display:none!important}
-@media(max-width:520px){.realAnatomyMap{max-height:none}.bodyGrid{grid-template-columns:1fr!important}}
+.atlasCredit{margin:8px 2px 0;text-align:center;color:#64748b;font-size:10px;line-height:1.35;overflow-wrap:anywhere}.atlasCredit a{color:#94a3b8}
+.bodyPanel{background:linear-gradient(180deg,#0a1726,#07111f)!important;padding:12px!important;overflow:hidden}.bodyPanel>b{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1}.human{display:none!important}
+@media(max-width:800px){.anatomyLayout{grid-template-columns:1fr!important}.bodyGrid{grid-template-columns:1fr 1fr!important}.main{overflow-x:hidden}.card{overflow:hidden}}
+@media(max-width:520px){.realAnatomyMap{max-height:none}.bodyGrid{grid-template-columns:1fr!important}.mapLegend{gap:8px}.atlasCredit{font-size:9px}}
 `;
 
 const BODY_FUNC=`function bodySvg(view){
@@ -28,7 +29,7 @@ const BODY_FUNC=`function bodySvg(view){
 `;
 
 function patchHtml(html){
- let out=html.replaceAll('v6.0.0',VERSION).replaceAll('Scientific Training Anatomy · DBACK v6','Professional Musculoskeletal Atlas · DBACK v7');
+ let out=html.replaceAll('v6.0.0',VERSION).replaceAll('v7.0.0',VERSION).replaceAll('Scientific Training Anatomy · DBACK v6','Professional Musculoskeletal Atlas · DBACK v7');
  const a=out.indexOf('function bodySvg(view){');
  const b=out.indexOf('function selectionSummary(){',a);
  if(a>=0&&b>a)out=out.slice(0,a)+BODY_FUNC+out.slice(b);
