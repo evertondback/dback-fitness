@@ -1,4 +1,4 @@
-import app from './worker-v6-hotfix.js';
+import app from './worker-v7.js';
 
 function patchHtml(html) {
   let out = html;
