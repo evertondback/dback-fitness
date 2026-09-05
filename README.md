@@ -1,27 +1,32 @@
-# DBACK Fitness x MuscleWiki
+# DBACK AI Coach
 
-Cloudflare Worker workout interface that keeps the MuscleWiki credential server-side and proxies authenticated MuscleWiki images/videos to the DBACK Fitness UI.
+Private ChatGPT workout coach app running on Cloudflare Workers with D1 persistence.
 
-## Required secret
+## ChatGPT App
 
-Configure `MUSCLEWIKI_API_KEY` as a Cloudflare Worker secret. Do not commit the key to GitHub.
+MCP endpoint: `/mcp`
 
-```sh
-npx wrangler secret put MUSCLEWIKI_API_KEY
-```
+Tools:
+- `open_coach`
+- `get_today_workout`
+- `start_workout`
+- `log_set`
+- `complete_workout`
+- `get_history`
+- `get_progress`
+- `get_exercise`
 
-Then deploy:
+The embedded MCP app widget provides workout cards, set logging, prior performance, next-load progression, session controls, and curated professional YouTube instruction links.
+
+## Persistence
+
+Cloudflare D1 database: `dback-fitness-coach` bound as `DB`.
+
+Tables: `workout_sessions`, `set_logs`, `exercise_state`.
+
+## Deploy
 
 ```sh
 npm install
 npm run deploy
 ```
-
-## Routes
-
-- `/` workout UI
-- `/health` confirms whether the secret is configured without revealing it
-- `/api/day?day=Monday` loads MuscleWiki exercise records
-- `/mw/media?url=...` streams authenticated MuscleWiki media to the browser
-
-The media proxy only accepts `https://api.musclewiki.com` URLs and forwards byte-range requests for MP4 playback.
