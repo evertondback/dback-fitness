@@ -1,5 +1,5 @@
 import base from './worker-v9.js';
-import {VERSION,json,handleManageHistory,cors,runHistorySelfTest} from './v10-history.js';
+import {VERSION,json,handleManageHistory,cors} from './v10-history.js';
 import {CSS,CORE_JS} from './v10-ui-core.js';
 import {HISTORY_CSS,HISTORY_JS} from './v10-ui-history.js';
 import {ANATOMY_SORT_CSS,ANATOMY_SORT_JS} from './v10-ui-anatomy.js';
@@ -13,4 +13,4 @@ function patch(html){
  return out;
 }
 async function patchJson(r){const t=r.headers.get('content-type')||'';if(!t.includes('application/json'))return r;try{const d=await r.json();if(d&&typeof d==='object'&&'version' in d)d.version=VERSION;return json(d,r.status)}catch{return r}}
-export default{async fetch(req,env,ctx){const u=new URL(req.url);if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors()});try{if(u.pathname==='/api/qa/selftest-history'&&req.method==='GET')return json(await runHistorySelfTest(env));const managed=await handleManageHistory(req,env,u);if(managed)return managed;const r=await base.fetch(req,env,ctx),t=r.headers.get('content-type')||'';if(req.method==='GET'&&u.pathname==='/'&&t.includes('text/html')){const h=new Headers(r.headers);h.set('cache-control','no-store,no-cache,must-revalidate');return new Response(patch(await r.text()),{status:r.status,headers:h})}if(t.includes('application/json'))return patchJson(r);return r}catch(e){return json({error:e?.message||'Server error'},500)}}};
+export default{async fetch(req,env,ctx){const u=new URL(req.url);if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors()});try{const managed=await handleManageHistory(req,env,u);if(managed)return managed;const r=await base.fetch(req,env,ctx),t=r.headers.get('content-type')||'';if(req.method==='GET'&&u.pathname==='/'&&t.includes('text/html')){const h=new Headers(r.headers);h.set('cache-control','no-store,no-cache,must-revalidate');return new Response(patch(await r.text()),{status:r.status,headers:h})}if(t.includes('application/json'))return patchJson(r);return r}catch(e){return json({error:e?.message||'Server error'},500)}}};
