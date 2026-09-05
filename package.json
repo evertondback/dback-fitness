@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "check": "node --check src/worker-production.js && node --check src/worker-v10.js && node --check src/v31-api.js && node --check src/v31-completion-ui.js && node --check src/v31-program-core.js && node --check src/v30-anatomy-realistic.js",
     "test": "node --test tests/*.test.mjs",
-    "validate": "npm test",
+    "validate": "npm run check && npm test",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
