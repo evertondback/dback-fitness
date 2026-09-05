@@ -9,23 +9,12 @@ const exerciseById=id=>allExercises().find(e=>e.id===id)||null;
 
 async function ensureSchema(env){
  if(!env.DB)throw new Error('D1 binding DB is unavailable.');
- await env.DB.exec(`
- CREATE TABLE IF NOT EXISTS workout_sessions (
-  id TEXT PRIMARY KEY, workout_date TEXT, day_name TEXT, started_at TEXT, completed_at TEXT,
-  duration_min REAL, readiness INTEGER, sleep_hours REAL, bodyweight_lb REAL,
-  session_rpe REAL, notes TEXT, status TEXT NOT NULL DEFAULT 'active'
- );
- CREATE TABLE IF NOT EXISTS set_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, exercise_id TEXT NOT NULL,
-  set_number INTEGER NOT NULL, weight_lb REAL, reps INTEGER, seconds INTEGER, distance_ft REAL,
-  rir REAL, rpe REAL, discomfort INTEGER DEFAULT 0, completed_at TEXT NOT NULL
- );
- CREATE TABLE IF NOT EXISTS exercise_state (
-  exercise_id TEXT PRIMARY KEY, last_weight_lb REAL, last_reps INTEGER, last_seconds INTEGER,
-  last_rir REAL, best_weight_lb REAL, best_reps INTEGER, best_seconds INTEGER,
-  next_weight_lb REAL, next_reps_target INTEGER, updated_at TEXT
- );
- `);
+ const ddl=[
+  `CREATE TABLE IF NOT EXISTS workout_sessions (id TEXT PRIMARY KEY, workout_date TEXT, day_name TEXT, started_at TEXT, completed_at TEXT, duration_min REAL, readiness INTEGER, sleep_hours REAL, bodyweight_lb REAL, session_rpe REAL, notes TEXT, status TEXT NOT NULL DEFAULT 'active')`,
+  `CREATE TABLE IF NOT EXISTS set_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, exercise_id TEXT NOT NULL, set_number INTEGER NOT NULL, weight_lb REAL, reps INTEGER, seconds INTEGER, distance_ft REAL, rir REAL, rpe REAL, discomfort INTEGER DEFAULT 0, completed_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS exercise_state (exercise_id TEXT PRIMARY KEY, last_weight_lb REAL, last_reps INTEGER, last_seconds INTEGER, last_rir REAL, best_weight_lb REAL, best_reps INTEGER, best_seconds INTEGER, next_weight_lb REAL, next_reps_target INTEGER, updated_at TEXT)`
+ ];
+ for(const sql of ddl)await env.DB.prepare(sql).run();
 }
 
 async function readBody(req){try{return await req.json()}catch{return {}}}
