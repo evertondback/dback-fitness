@@ -23,6 +23,7 @@ function patch(html){
  out=out.replaceAll("const v=$('#view-anatomy')","const v=Q('#view-anatomy')");
  out=out.replaceAll("const v=$('#view-workout')","const v=Q('#view-workout')");
  out=out.replaceAll("const v=$('#view-plan')","const v=Q('#view-plan')");
+ out=out.replace("'+v.missing+' videos need sourcing","Video library · '+v.ready+'/'+v.total+' ready");
  out=out.replace("async function loadToday(){W=await api('/api/today');session=W.activeSession||null;renderWorkout();startTimers()}","async function loadToday(){W=await api('/api/today');session=W.activeSession||null;startTimers()}");
  out=out.replace("async function loadPlan(){PLAN=await api('/api/plan');LIB=LIB||await api('/api/library');selectedPlanDay=selectedPlanDay||W?.day||'Monday';renderPlan()}","async function loadPlan(){PLAN=await api('/api/plan');LIB=LIB||await api('/api/library');selectedPlanDay=selectedPlanDay||W?.day||'Monday'}");
  return out;
