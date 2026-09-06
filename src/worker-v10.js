@@ -20,6 +20,10 @@ function patch(html){
  out=out.replaceAll("const v=$('#view-anatomy')","const v=Q('#view-anatomy')");
  out=out.replaceAll("const v=$('#view-workout')","const v=Q('#view-workout')");
  out=out.replaceAll("const v=$('#view-plan')","const v=Q('#view-plan')");
+ // v31 owns Workout and Full Plan. Legacy boot/loaders may still fetch their old APIs for compatibility,
+ // but they must never overwrite the authoritative v31 DOM after or during startup.
+ out=out.replace("async function loadToday(){W=await api('/api/today');session=W.activeSession||null;renderWorkout();startTimers()}","async function loadToday(){W=await api('/api/today');session=W.activeSession||null;startTimers()}");
+ out=out.replace("async function loadPlan(){PLAN=await api('/api/plan');LIB=LIB||await api('/api/library');selectedPlanDay=selectedPlanDay||W?.day||'Monday';renderPlan()}","async function loadPlan(){PLAN=await api('/api/plan');LIB=LIB||await api('/api/library');selectedPlanDay=selectedPlanDay||W?.day||'Monday'}");
  return out;
 }
 async function patchJson(r){const t=r.headers.get('content-type')||'';if(!t.includes('application/json'))return r;try{const d=await r.json();if(d&&typeof d==='object'&&'version' in d)d.version=VERSION;return json(d,r.status)}catch{return r}}
