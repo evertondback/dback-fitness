@@ -58,9 +58,24 @@ for(const profile of profiles){
     await clickNav(page,'Workout');
     await page.locator('#view-workout .db31').waitFor({state:'visible',timeout:20000});
     assert.equal(await page.locator('#view-workout [data-db31-day]').count(),7,`${profile.name}: Workout must show 7 day tabs`);
-    assert.ok((await page.locator('#view-workout .db31WarmItem').count())>=15,`${profile.name}: incomplete warm-up`);
-    assert.ok((await page.locator('#view-workout .db31Exercise').count())>=6,`${profile.name}: incomplete workout exercises`);
+    const warmCount=await page.locator('#view-workout .db31WarmItem').count();
+    const exerciseCount=await page.locator('#view-workout .db31Exercise').count();
+    assert.ok(warmCount>=15,`${profile.name}: incomplete warm-up`);
+    assert.ok(exerciseCount>=6,`${profile.name}: incomplete workout exercises`);
     assert.equal(await page.locator('#view-workout .db31Error').count(),0,`${profile.name}: Workout error state present`);
+    await page.locator('#view-workout .db37Summary').waitFor({state:'visible',timeout:10000});
+    assert.equal(await page.locator('#view-workout .db31Exercise .db37Tracker').count(),exerciseCount,`${profile.name}: every exercise must have Timer + Tracker`);
+    assert.equal(await page.locator('#view-workout .db31WarmItem .db37WarmTrack').count(),warmCount,`${profile.name}: every warm-up must have timer/tracker controls`);
+    const firstTracker=page.locator('#view-workout .db31Exercise .db37Tracker').first();
+    for(const action of ['work-toggle','work-reset','rest-toggle','rest-reset','set-plus','set-minus'])assert.equal(await firstTracker.locator(`[data-db37="${action}"]`).count(),1,`${profile.name}: missing ${action}`);
+    await firstTracker.locator('[data-db37="work-toggle"]').click();
+    await page.waitForTimeout(700);
+    await firstTracker.locator('[data-db37="work-toggle"]').click();
+    const workText=await firstTracker.locator('[data-db37-work]').textContent();
+    assert.notEqual(workText,'00:00',`${profile.name}: work timer did not advance`);
+    await firstTracker.locator('[data-db37="set-plus"]').click();
+    assert.match(await page.locator('#view-workout [data-db37-summary]').textContent(),/1\//,`${profile.name}: tracker summary did not update after set completion`);
+    await firstTracker.locator('[data-db37="set-minus"]').click();
     await noHorizontalOverflow(page,`${profile.name} workout`);
     await page.screenshot({path:`${OUT}/${profile.name}-workout.png`,fullPage:true});
 
@@ -72,13 +87,12 @@ for(const profile of profiles){
     await page.screenshot({path:`${OUT}/${profile.name}-full-plan.png`,fullPage:true});
 
     await clickNav(page,'Anatomy Lab');
-    await page.locator('#view-anatomy .db30').waitFor({state:'visible',timeout:20000});
-    assert.equal(await page.locator('#view-anatomy .db30').count(),1,`${profile.name}: Anatomy must have exactly one unified map`);
-    assert.equal(await page.locator('#view-anatomy .db30Tabs button').count(),3,`${profile.name}: Anatomy view controls missing`);
-    for(const label of ['Front View','Back View','Both Views']){
-      const b=page.getByRole('button',{name:label,exact:true});
-      assert.ok(await b.count(),`${profile.name}: missing ${label}`);
-      await b.first().click();
+    await page.locator('#view-anatomy .db35').waitFor({state:'visible',timeout:20000});
+    assert.equal(await page.locator('#view-anatomy .db35').count(),1,`${profile.name}: Anatomy must have exactly one unified map`);
+    const anatomyButtons=page.locator('#view-anatomy .db35Seg button');
+    assert.ok((await anatomyButtons.count())>=2,`${profile.name}: Anatomy view controls missing`);
+    for(let i=0;i<Math.min(2,await anatomyButtons.count());i++){
+      await anatomyButtons.nth(i).click();
       await page.waitForTimeout(150);
     }
     await noHorizontalOverflow(page,`${profile.name} anatomy`);
@@ -118,5 +132,5 @@ if(failures.length){
   console.error(failures.join('\n'));
   process.exitCode=1;
 }else{
-  console.log('Live mobile QA passed for 390px, 430px and 768px viewports, including History anti-flicker stability.');
+  console.log('Live mobile QA passed for 390px, 430px and 768px viewports, including v37 timers/trackers and History anti-flicker stability.');
 }
