@@ -9,14 +9,15 @@ import {LIBRARY_INDEX_CSS,LIBRARY_INDEX_JS} from './v14-library-index.js';
 import {VIDEO_SOURCE_CSS,VIDEO_SOURCE_JS} from './v22-video-source-manager.js';
 import {VIDEO_LIBRARY_CSS,VIDEO_LIBRARY_JS,handleVideoLibrary} from './v23-video-library-manager.js';
 import {COLLAPSE_CSS,COLLAPSE_JS} from './v24-collapse-manager.js';
-import {ANATOMY30_CSS,ANATOMY30_JS} from './v30-anatomy-realistic.js';
+import {ANATOMY34_CSS,ANATOMY34_JS} from './v34-anatomy-unified.js';
 import {COMPLETION31_CSS,COMPLETION31_JS} from './v31-completion-ui.js';
 import {NAV31_GUARD_JS} from './v31-navigation-guard.js';
 import {handleV31Api} from './v31-api.js';
 import {OPS32_CSS,OPS32_JS} from './v32-operations-center.js';
 import {WARMUP33_CSS,WARMUP33_JS} from './v33-warmup-video-guard.js';
+import {VIDEO34_CSS,VIDEO34_JS} from './v34-video-status-fix.js';
 function patch(html){
- let out=html.replaceAll('9.7.0',VERSION).replaceAll('9.6.0',VERSION).replaceAll('9.5.0',VERSION).replaceAll('9.4.0',VERSION).replaceAll('9.3.0',VERSION).replaceAll('9.2.0',VERSION).replaceAll('9.1.0',VERSION).replaceAll('9.0.2',VERSION).replaceAll('9.0.1',VERSION).replaceAll('8.1.0',VERSION).replaceAll('8.0.1',VERSION).replaceAll('8.0.0',VERSION).replaceAll('7.0.2',VERSION).replaceAll('7.0.1',VERSION).replace('</style>',CSS+HISTORY_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+EQUIPMENT_LIBRARY_CSS+LIBRARY_INDEX_CSS+VIDEO_SOURCE_CSS+VIDEO_LIBRARY_CSS+COLLAPSE_CSS+ANATOMY30_CSS+COMPLETION31_CSS+OPS32_CSS+WARMUP33_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+RESPONSIVE_JS+'</script><script>'+EQUIPMENT_LIBRARY_JS+'</script><script>'+LIBRARY_INDEX_JS+'</script><script>'+VIDEO_SOURCE_JS+'</script><script>'+VIDEO_LIBRARY_JS+'</script><script>'+COLLAPSE_JS+'</script><script>'+ANATOMY30_JS+'</script><script>'+COMPLETION31_JS+'</script><script>'+NAV31_GUARD_JS+'</script><script>'+OPS32_JS+'</script><script>'+WARMUP33_JS+'</script></body>');
+ let out=html.replaceAll('9.7.0',VERSION).replaceAll('9.6.0',VERSION).replaceAll('9.5.0',VERSION).replaceAll('9.4.0',VERSION).replaceAll('9.3.0',VERSION).replaceAll('9.2.0',VERSION).replaceAll('9.1.0',VERSION).replaceAll('9.0.2',VERSION).replaceAll('9.0.1',VERSION).replaceAll('8.1.0',VERSION).replaceAll('8.0.1',VERSION).replaceAll('8.0.0',VERSION).replaceAll('7.0.2',VERSION).replaceAll('7.0.1',VERSION).replace('</style>',CSS+HISTORY_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+EQUIPMENT_LIBRARY_CSS+LIBRARY_INDEX_CSS+VIDEO_SOURCE_CSS+VIDEO_LIBRARY_CSS+COLLAPSE_CSS+ANATOMY34_CSS+COMPLETION31_CSS+OPS32_CSS+WARMUP33_CSS+VIDEO34_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+RESPONSIVE_JS+'</script><script>'+EQUIPMENT_LIBRARY_JS+'</script><script>'+LIBRARY_INDEX_JS+'</script><script>'+VIDEO_SOURCE_JS+'</script><script>'+VIDEO_LIBRARY_JS+'</script><script>'+COLLAPSE_JS+'</script><script>'+ANATOMY34_JS+'</script><script>'+COMPLETION31_JS+'</script><script>'+NAV31_GUARD_JS+'</script><script>'+OPS32_JS+'</script><script>'+WARMUP33_JS+'</script><script>'+VIDEO34_JS+'</script></body>');
  out=out.replace("const $=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)]","const Q=s=>document.querySelector(s),QA=s=>[...document.querySelectorAll(s)]");
  out=out.replace("nav=n=>$('#nav button,#mobileNav button').find","nav=n=>QA('#nav button,#mobileNav button').find");
  out=out.replaceAll("const v=$('#view-anatomy')","const v=Q('#view-anatomy')");
