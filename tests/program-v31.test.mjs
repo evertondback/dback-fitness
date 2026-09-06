@@ -58,12 +58,30 @@ test('every exercise resolves to usable coaching metadata',()=>{
  }
 });
 
-test('production worker wires only the current anatomy hard-reset module and completion suite',async()=>{
+test('production worker wires current anatomy, completion suite, and universal timer tracker',async()=>{
  const source=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(source,/v35-anatomy-hard-reset\.js/);
  assert.doesNotMatch(source,/v27-anatomy-vector\.js|v28-anatomy-mobile-shell\.js|v29-anatomy-unified\.js|v30-anatomy-realistic\.js/);
  assert.match(source,/v31-completion-ui\.js/);
+ assert.match(source,/v37-timer-tracker\.js/);
+ assert.match(source,/TIMER37_CSS/);
+ assert.match(source,/TIMER37_JS/);
  assert.match(source,/handleV31Api/);
+});
+
+test('universal timer tracker covers every workout exercise and warm-up movement',async()=>{
+ const source=await readFile(new URL('../src/v37-timer-tracker.js',import.meta.url),'utf8');
+ assert.match(source,/\.db31Exercise/);
+ assert.match(source,/\.db31WarmItem/);
+ assert.match(source,/Work \/ Exercise/);
+ assert.match(source,/>Rest</);
+ assert.match(source,/Complete Set/);
+ assert.match(source,/Undo Set/);
+ assert.match(source,/warm-check/);
+ assert.match(source,/localStorage/);
+ assert.match(source,/navigator\.vibrate/);
+ assert.match(source,/data-log/);
+ assert.match(source,/Workout Tracker/);
 });
 
 test('v31 API never performs runtime schema DDL and exposes complete contract',async()=>{
@@ -74,9 +92,9 @@ test('v31 API never performs runtime schema DDL and exposes complete contract',a
  for(const route of ['/api/v31/health','/api/v31/program','/api/v31/session/start','/api/v31/session/log','/api/v31/session/complete','/api/v31/history','/api/v31/progress'])assert.ok(source.includes(route),route);
 });
 
-test('production shell is stamped as v36.1 and disables caching',async()=>{
+test('production shell is stamped as v37 and disables caching',async()=>{
  const source=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
- assert.match(source,/PRODUCTION_VERSION='36\.1\.0'/);
+ assert.match(source,/PRODUCTION_VERSION='37\.0\.0'/);
  assert.match(source,/no-store, no-cache, must-revalidate/);
  assert.match(source,/x-dback-build/);
 });
