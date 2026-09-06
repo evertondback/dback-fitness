@@ -1,5 +1,5 @@
 import {PROGRAM31,WARMUP31,DAY_ORDER,validateProgram31,PROGRAM_VERSION} from './v31-program-core.js';
-import {enrichProgram,WARMUP_COACHING,coachingFor} from './v35-exercise-coaching.js';
+import {enrichProgram,WARMUP_COACHING,coachingFor} from './v36-coaching.js';
 
 const TZ='America/New_York';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
