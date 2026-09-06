@@ -58,10 +58,10 @@ test('every exercise resolves to usable coaching metadata',()=>{
  }
 });
 
-test('production worker wires only the current realistic anatomy module and completion suite',async()=>{
+test('production worker wires only the current anatomy hard-reset module and completion suite',async()=>{
  const source=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
- assert.match(source,/v30-anatomy-realistic\.js/);
- assert.doesNotMatch(source,/v27-anatomy-vector\.js|v28-anatomy-mobile-shell\.js|v29-anatomy-unified\.js/);
+ assert.match(source,/v35-anatomy-hard-reset\.js/);
+ assert.doesNotMatch(source,/v27-anatomy-vector\.js|v28-anatomy-mobile-shell\.js|v29-anatomy-unified\.js|v30-anatomy-realistic\.js/);
  assert.match(source,/v31-completion-ui\.js/);
  assert.match(source,/handleV31Api/);
 });
@@ -94,12 +94,11 @@ test('workout and full-plan UI has desktop, tablet and phone responsive contract
  assert.match(source,/Avoid:/);
 });
 
-test('anatomy UI has unified cleanup and mobile full-screen contract',async()=>{
- const source=await readFile(new URL('../src/v30-anatomy-realistic.js',import.meta.url),'utf8');
+test('current anatomy UI has single-owner cleanup and mobile full-screen contract',async()=>{
+ const source=await readFile(new URL('../src/v35-anatomy-hard-reset.js',import.meta.url),'utf8');
  assert.match(source,/@media\(max-width:720px\)/);
- assert.match(source,/#view-anatomy>\*:not\(\.db30\)\{display:none!important\}/);
- assert.match(source,/function clean\(v\)/);
- assert.match(source,/data-mode="front"/);
- assert.match(source,/data-mode="back"/);
- assert.match(source,/data-mode="both"/);
+ assert.match(source,/#view-anatomy>\.db35\{display:block!important\}/);
+ assert.match(source,/#view-anatomy>\.db35~\*\{display:none!important\}/);
+ assert.match(source,/db35Active/);
+ assert.match(source,/db35Seg/);
 });
