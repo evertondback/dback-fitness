@@ -1,6 +1,6 @@
 import app from './worker-v10.js';
+import {SYSTEM_VERSION as PRODUCTION_VERSION} from './system-version.js';
 
-const PRODUCTION_VERSION='37.0.0';
 function patchHtml(html) {
   let out = html;
   for (const v of ['7.0.1','7.0.2','8.0.0','8.0.1','8.1.0','9.0.0','9.0.1','9.0.2','9.1.0','9.2.0','9.3.0','9.4.0','9.5.0','9.6.0','9.7.0','31.0.0','32.0.0','32.0.1','33.0.0','34.0.0','35.0.0','35.0.1','35.0.2','35.0.3','36.0.0','36.1.0']) out = out.replaceAll(v,PRODUCTION_VERSION);
