@@ -1,11 +1,11 @@
 {
   "name": "dback-fitness",
-  "version": "31.0.0",
+  "version": "36.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "check": "node --check src/worker-production.js && node --check src/worker-v10.js && node --check src/v31-api.js && node --check src/v31-completion-ui.js && node --check src/v31-navigation-guard.js && node --check src/v31-program-core.js && node --check src/v35-exercise-coaching.js && node --check src/v30-anatomy-realistic.js && node --check tests/live-mobile.e2e.mjs",
+    "check": "node --check src/worker-production.js && node --check src/worker-v10.js && node --check src/v31-api.js && node --check src/v31-completion-ui.js && node --check src/v31-navigation-guard.js && node --check src/v31-program-core.js && node --check src/v35-exercise-coaching.js && node --check src/v36-coaching.js && node --check src/v30-anatomy-realistic.js && node --check tests/live-mobile.e2e.mjs",
     "test": "node --test tests/*.test.mjs",
     "e2e:mobile": "node tests/live-mobile.e2e.mjs",
     "validate": "npm run check && npm test",
