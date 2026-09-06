@@ -46,6 +46,8 @@ for(const profile of profiles){
   page.on('pageerror',e=>failures.push(`${profile.name}: pageerror ${e.message}`));
   const consoleErrors=[];
   page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
+  let historyGets=0;
+  page.on('request',r=>{if(r.method()==='GET'&&r.url().includes('/api/manage/history')&&!r.url().includes('/export'))historyGets++});
 
   try{
     const res=await page.goto(BASE,{waitUntil:'networkidle',timeout:60000});
@@ -82,7 +84,21 @@ for(const profile of profiles){
     await noHorizontalOverflow(page,`${profile.name} anatomy`);
     await page.screenshot({path:`${OUT}/${profile.name}-anatomy.png`,fullPage:true});
 
-    for(const section of ['Progress','History','AI Coach','Profile']){
+    await clickNav(page,'Progress');
+    await page.waitForTimeout(350);
+    await noHorizontalOverflow(page,`${profile.name} Progress`);
+
+    const historyBefore=historyGets;
+    await clickNav(page,'History');
+    await page.locator('#view-history .dbManager .card').waitFor({state:'visible',timeout:20000});
+    await page.evaluate(()=>{const card=document.querySelector('#view-history .dbManager .card');if(card)card.dataset.stabilityProbe='stable'});
+    await page.waitForTimeout(1800);
+    assert.equal(await page.locator('#view-history .dbManager .card[data-stability-probe="stable"]').count(),1,`${profile.name}: History DOM was replaced repeatedly (flicker regression)`);
+    assert.ok(historyGets-historyBefore<=1,`${profile.name}: History refetched repeatedly (${historyGets-historyBefore} GETs)`);
+    await noHorizontalOverflow(page,`${profile.name} History`);
+    await page.screenshot({path:`${OUT}/${profile.name}-history.png`,fullPage:true});
+
+    for(const section of ['AI Coach','Profile']){
       await clickNav(page,section);
       await page.waitForTimeout(350);
       await noHorizontalOverflow(page,`${profile.name} ${section}`);
@@ -102,5 +118,5 @@ if(failures.length){
   console.error(failures.join('\n'));
   process.exitCode=1;
 }else{
-  console.log('Live mobile QA passed for 390px, 430px and 768px viewports.');
+  console.log('Live mobile QA passed for 390px, 430px and 768px viewports, including History anti-flicker stability.');
 }
