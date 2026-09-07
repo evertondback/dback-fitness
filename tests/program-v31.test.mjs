@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.8.0');
+ assert.equal(SYSTEM_VERSION,'47.9.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -141,8 +141,7 @@ test('workout and full-plan UI has desktop, tablet and phone responsive contract
  assert.match(source,/grid-template-columns:1fr/);
  assert.match(source,/db31Days/);
  assert.match(source,/data-db31-day/);
- assert.match(source,/Why it is in your program/);
- assert.match(source,/What it works/);
+ assert.match(source,/Purpose:/);
  assert.match(source,/Focus muscles:/);
  assert.match(source,/Coach cues:/);
  assert.match(source,/Avoid:/);
@@ -283,7 +282,7 @@ test('v47.4 restores instructional videos inside the unified mobile app',async()
 test('v47.5 glass video window is draggable, resizable and mobile safe',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['db41-videoGrip','db41-videoTools','initVideoWindow','pointerdown','pointermove','db41_video_geometry','toggleVideoMin','toggleVideoMax','resetVideoWindow','ResizeObserver'])assert.ok(shell.includes(token),token);
- assert.match(shell,/APP41_VERSION='47\.8\.0'/);
+ assert.match(shell,/APP41_VERSION='47\.9\.0'/);
  assert.match(shell,/backdrop-filter:blur\(24px\)/);
  assert.match(shell,/resize:both/);
  assert.match(shell,/resize:none/);
@@ -318,7 +317,7 @@ test('v47.7 unified workout controls are operational and video window controls a
 test('v47.8 restores complete warm-up, recovery work and meaningful exercise coaching in unified Today',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- assert.match(shell,/47\.8\.0/);
+ assert.match(shell,/47\.9\.0/);
  assert.match(shell,/\/api\/v31\/program/);
  assert.match(shell,/Complete daily joint \+ alignment warm-up/);
  assert.match(shell,/Mobility \+ long flexibility/);
@@ -330,4 +329,14 @@ test('v47.8 restores complete warm-up, recovery work and meaningful exercise coa
  assert.match(shell,/Watch mobility \/ flexibility video/);
  assert.match(platform,/coachingFor/);
  assert.match(platform,/coaching,purpose:coaching\.purpose/);
+});
+
+
+test('v47.9 gives every warm-up and recovery movement a video action without covering workout content',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const token of ['AUX_VIDEO_DIRECT','professionalVideoSearch','Find professional warm-up video','Find professional mobility / flexibility video','video-open:not(.video-floating)','db41-video-float','setVideoFloat'])assert.ok(shell.includes(token),token);
+ assert.doesNotMatch(shell,/Instructional video pending professional review/);
+ assert.match(shell,/@media\(min-width:901px\)/);
+ assert.match(shell,/padding-right:min\(430px,34vw\)/);
+ assert.match(shell,/width:100vw!important;height:100dvh!important/);
 });
