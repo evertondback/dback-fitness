@@ -1,6 +1,6 @@
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
 
-export const PLATFORM40_VERSION='42.0.0';
+export const PLATFORM40_VERSION='43.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const readBody=async req=>{try{return await req.json()}catch{return {}}};
 const now=()=>new Date().toISOString();
@@ -102,11 +102,34 @@ function readinessAdjustment(metrics){
  return {mode:'standard',volume:1,load:1,rir:0,reason:'normal readiness'};
 }
 
-function buildPlan(state,profile,metrics){
+function equipmentNames(profile){return (profile.profile.equipment||[]).map(x=>String(typeof x==='string'?x:(x.name||x.key||'')).toLowerCase()).filter(Boolean)}
+function hasAnyEquipment(names,terms){return terms.some(t=>names.some(n=>n.includes(t)))}
+function homeAdaptExercise(e,names){
+ const name=String(e.name||'').toLowerCase(),load=String(e.load||'').toLowerCase();
+ const needsDumbbell=load.includes('dumbbell');
+ const needsBar=/pull-up|chin-up|dead hang/.test(name);
+ const dumbbells=hasAnyEquipment(names,['dumbbell','adjustable weight']);
+ const bar=hasAnyEquipment(names,['pull-up','pullup','chin-up','hang bar','doorway bar']);
+ if((!needsDumbbell||dumbbells)&&(!needsBar||bar))return {...e,environment:{mode:'home',compatible:true,substituted:false}};
+ const base={...e,environment:{mode:'home',compatible:true,substituted:true,originalName:e.name,reason:needsBar&&!bar?'Home profile does not list a pull-up/hang bar.':'Home profile does not list dumbbells.'}};
+ if(needsBar)return {...base,id:e.id+'-home-sub',name:'Floor Y-T-W',sets:Math.min(Number(e.sets)||3,3),reps:'8 each',load:'bodyweight',tempo:'controlled',category:'posture',purpose:'Preserve upper-back and scapular control when vertical-pull equipment is unavailable.'};
+ if(/squat|lunge/.test(name))return {...base,id:e.id+'-home-sub',name:name.includes('lunge')?'Reverse Lunge':'Bodyweight Squat',load:'bodyweight',purpose:'Preserve the programmed lower-body pattern without external load.'};
+ if(/romanian deadlift|rdl|hip hinge/.test(name))return {...base,id:e.id+'-home-sub',name:'Single-Leg Hip Hinge',load:'bodyweight',purpose:'Preserve hip-hinge mechanics and posterior-chain control without external load.'};
+ if(/press|push press|triceps/.test(name))return {...base,id:e.id+'-home-sub',name:'Push-Up',load:'bodyweight',purpose:'Preserve horizontal pressing and trunk stiffness without external load.'};
+ if(/row|curl|lateral raise|external rotation/.test(name))return {...base,id:e.id+'-home-sub',name:'Floor Y-T-W',load:'bodyweight',category:'posture',purpose:'Preserve upper-back, shoulder and scapular work when external resistance is unavailable.'};
+ if(/march|carry|drag/.test(name))return {...base,id:e.id+'-home-sub',name:'Bear Plank Shoulder Tap',load:'bodyweight',category:'core',purpose:'Preserve loaded-trunk and anti-rotation demands without external load.'};
+ return {...base,id:e.id+'-home-sub',name:'Bodyweight Squat',load:'bodyweight',purpose:'Maintain a safe full-body training stimulus when listed equipment is unavailable.'};
+}
+function environmentExercise(e,profile,environment){
+ if(environment!=='home')return {...e,environment:{mode:'gym',compatible:true,substituted:false}};
+ return homeAdaptExercise(e,equipmentNames(profile));
+}
+
+function buildPlan(state,profile,metrics,environment='gym'){
  const week=weekFrom(state.cycle_start),phase=phaseFor(week),ready=readinessAdjustment(metrics),program={};
  const goals=profile.profile.goals||[];const goalContext=goals.length?goals.map(g=>typeof g==='string'?g:(g.name||g.key||'goal')).join(', '):'general strength, muscle, movement quality and healthspan';
- for(const day of DAY_ORDER){const src=PROGRAM31[day];program[day]={...src,purpose:DAY_PURPOSE[day],weekPurpose:`${phase.name}: ${phase.intent}`,adaptationMode:ready.mode,exercises:src.exercises.map((e,i)=>({...e,purpose:exercisePurpose(e),priority:i<3?'primary':'support',adaptive:{loadFactor:Number((phase.load*ready.load).toFixed(2)),volumeFactor:Number(ready.volume.toFixed(2)),rirAdjustment:phase.rirDelta+ready.rir,rule:'Change one meaningful progression variable at a time unless safety or recovery requires regression.'}}))}}
- return {version:PLATFORM40_VERSION,cycle:{cycleNumber:state.cycle_number||1,week,phase:phase.name,phaseIntent:phase.intent,goalContext},readiness:ready,guardrails:{noDiagnosis:true,noAutomaticMedicalClaims:true,painRule:'Sharp, radiating or neurologic symptoms stop the movement and require appropriate clinical evaluation.',progressionRule:'Progress only when technique, recovery and recent performance support it.',sexUse:'Sex selection is stored when relevant to physiology or reference ranges; training changes are driven primarily by goals, performance, recovery, measurements, equipment and constraints rather than stereotypes.'},program};
+ for(const day of DAY_ORDER){const src=PROGRAM31[day];program[day]={...src,purpose:DAY_PURPOSE[day],weekPurpose:`${phase.name}: ${phase.intent}`,adaptationMode:ready.mode,exercises:src.exercises.map((e,i)=>{const adapted=environmentExercise(e,profile,environment);return {...adapted,purpose:adapted.purpose||exercisePurpose(adapted),priority:i<3?'primary':'support',adaptive:{loadFactor:Number((phase.load*ready.load).toFixed(2)),volumeFactor:Number(ready.volume.toFixed(2)),rirAdjustment:phase.rirDelta+ready.rir,rule:'Change one meaningful progression variable at a time unless safety or recovery requires regression.'}}})}}
+ return {version:PLATFORM40_VERSION,environment:{mode:environment,profileEquipment:equipmentNames(profile)},cycle:{cycleNumber:state.cycle_number||1,week,phase:phase.name,phaseIntent:phase.intent,goalContext},readiness:ready,guardrails:{noDiagnosis:true,noAutomaticMedicalClaims:true,painRule:'Sharp, radiating or neurologic symptoms stop the movement and require appropriate clinical evaluation.',progressionRule:'Progress only when technique, recovery and recent performance support it.',sexUse:'Sex selection is stored when relevant to physiology or reference ranges; training changes are driven primarily by goals, performance, recovery, measurements, equipment and constraints rather than stereotypes.'},program};
 }
 
 async function createUser(req,env){
@@ -145,10 +168,10 @@ export async function handleV40Api(req,env,url){
  if(url.pathname==='/api/v40/admin/summary'&&req.method==='GET'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return adminSummary(env)}
  if(url.pathname==='/api/v40/admin/users'&&req.method==='POST'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return createUser(req,env)}
  const a=await actor(req,env);if(!a)return json({error:'Authorization required.'},401);
- if(url.pathname==='/api/v40/me'&&req.method==='GET')return json({ok:true,...await getProfile(env,a.id),latestMetrics:await latestMetrics(env,a.id)});
+ if(url.pathname==='/api/v40/me'&&req.method==='GET')return json({ok:true,actor:{id:a.id,role:a.role,status:a.status},...await getProfile(env,a.id),latestMetrics:await latestMetrics(env,a.id)});
  if(url.pathname==='/api/v40/profile'&&req.method==='PUT')return updateProfile(req,env,a);
  if(url.pathname==='/api/v40/metrics'&&req.method==='POST')return addMetric(req,env,a);
- if(url.pathname==='/api/v40/plan'&&req.method==='GET'){let state=await ensurePlanState(env,a.id);state=await syncPlanState(env,state,a.id);const profile=await getProfile(env,a.id),metrics=await latestMetrics(env,a.id);return json({ok:true,...buildPlan(state,profile,metrics)})}
+ if(url.pathname==='/api/v40/plan'&&req.method==='GET'){let state=await ensurePlanState(env,a.id);state=await syncPlanState(env,state,a.id);const profile=await getProfile(env,a.id),metrics=await latestMetrics(env,a.id),environment=url.searchParams.get('environment')==='home'?'home':'gym';return json({ok:true,...buildPlan(state,profile,metrics,environment)})}
  return json({error:'Not found.'},404);
 }
 

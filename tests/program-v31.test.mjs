@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'42.0.0');
+ assert.equal(SYSTEM_VERSION,'43.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -161,4 +161,18 @@ test('v42 persists adaptive week and phase transitions with audit records',async
  assert.match(source,/cycle-state-change/);
  assert.match(source,/UPDATE coach_plan_state SET week_number=\?,phase=\?/);
  assert.match(source,/INSERT INTO coach_adaptations/);
+});
+
+
+test('v43 environment-aware planning and role-aware navigation are wired',async()=>{
+ const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ assert.match(platform,/environmentExercise/);
+ assert.match(platform,/homeAdaptExercise/);
+ assert.match(platform,/url\.searchParams\.get\('environment'\)/);
+ assert.match(platform,/actor:\{id:a\.id,role:a\.role,status:a\.status\}/);
+ assert.match(shell,/plan\?environment=/);
+ assert.match(shell,/S\.me\?\.actor\?\.role==='admin'/);
+ assert.match(shell,/isAdmin\?\[\['admin','Admin'\]\]:\[\]/);
+ assert.match(shell,/Training environment updated to/);
 });
