@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'44.0.0');
+ assert.equal(SYSTEM_VERSION,'45.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -187,4 +187,15 @@ test('v44 admin lifecycle controls are wired end to end',async()=>{
  assert.match(ui,/data-user-action=\"role\"/);
  assert.match(ui,/data-user-action=\"token\"/);
  assert.match(ui,/adminUserAction/);
+});
+
+
+test('v45 persists readiness mode transitions without duplicate audit spam',async()=>{
+ const source=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ assert.match(source,/auditReadinessAdjustment/);
+ assert.match(source,/event_type='readiness-adjustment'/);
+ assert.match(source,/previousMode===adjustment\.mode/);
+ assert.match(source,/readiness-adjustment/);
+ assert.match(source,/safety_class/);
+ assert.match(source,/ready=await auditReadinessAdjustment/);
 });

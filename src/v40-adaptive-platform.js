@@ -1,6 +1,6 @@
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
 
-export const PLATFORM40_VERSION='44.0.0';
+export const PLATFORM40_VERSION='45.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const readBody=async req=>{try{return await req.json()}catch{return {}}};
 const now=()=>new Date().toISOString();
@@ -102,6 +102,18 @@ function readinessAdjustment(metrics){
  return {mode:'standard',volume:1,load:1,rir:0,reason:'normal readiness'};
 }
 
+async function auditReadinessAdjustment(env,userId,state,metrics){
+ const adjustment=readinessAdjustment(metrics),db=ensureDb(env);
+ const previous=await db.prepare("SELECT change_json FROM coach_adaptations WHERE user_id=? AND event_type='readiness-adjustment' ORDER BY created_at DESC LIMIT 1").bind(userId).first();
+ const previousMode=parse(previous?.change_json)?.mode||null;
+ if(previousMode===adjustment.mode)return adjustment;
+ const phase=phaseFor(weekFrom(state.cycle_start));
+ const evidence={recordedAt:metrics?.recorded_at||null,readiness:metrics?.readiness??null,sleepHours:metrics?.sleep_hours??null,painScore:metrics?.pain_score??null};
+ const change={mode:adjustment.mode,loadFactor:adjustment.load,volumeFactor:adjustment.volume,rirAdjustment:adjustment.rir};
+ await db.prepare('INSERT INTO coach_adaptations(id,user_id,created_at,week_number,phase,event_type,reason,evidence_json,change_json,safety_class) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),userId,now(),weekFrom(state.cycle_start),phase.name,'readiness-adjustment',adjustment.reason,JSON.stringify(evidence),JSON.stringify(change),adjustment.mode==='protect'?'protect':'normal').run();
+ return adjustment;
+}
+
 function equipmentNames(profile){return (profile.profile.equipment||[]).map(x=>String(typeof x==='string'?x:(x.name||x.key||'')).toLowerCase()).filter(Boolean)}
 function hasAnyEquipment(names,terms){return terms.some(t=>names.some(n=>n.includes(t)))}
 function homeAdaptExercise(e,names){
@@ -125,8 +137,8 @@ function environmentExercise(e,profile,environment){
  return homeAdaptExercise(e,equipmentNames(profile));
 }
 
-function buildPlan(state,profile,metrics,environment='gym'){
- const week=weekFrom(state.cycle_start),phase=phaseFor(week),ready=readinessAdjustment(metrics),program={};
+function buildPlan(state,profile,metrics,environment='gym',readyOverride=null){
+ const week=weekFrom(state.cycle_start),phase=phaseFor(week),ready=readyOverride||readinessAdjustment(metrics),program={};
  const goals=profile.profile.goals||[];const goalContext=goals.length?goals.map(g=>typeof g==='string'?g:(g.name||g.key||'goal')).join(', '):'general strength, muscle, movement quality and healthspan';
  for(const day of DAY_ORDER){const src=PROGRAM31[day];program[day]={...src,purpose:DAY_PURPOSE[day],weekPurpose:`${phase.name}: ${phase.intent}`,adaptationMode:ready.mode,exercises:src.exercises.map((e,i)=>{const adapted=environmentExercise(e,profile,environment);return {...adapted,purpose:adapted.purpose||exercisePurpose(adapted),priority:i<3?'primary':'support',adaptive:{loadFactor:Number((phase.load*ready.load).toFixed(2)),volumeFactor:Number(ready.volume.toFixed(2)),rirAdjustment:phase.rirDelta+ready.rir,rule:'Change one meaningful progression variable at a time unless safety or recovery requires regression.'}}})}}
  return {version:PLATFORM40_VERSION,environment:{mode:environment,profileEquipment:equipmentNames(profile)},cycle:{cycleNumber:state.cycle_number||1,week,phase:phase.name,phaseIntent:phase.intent,goalContext},readiness:ready,guardrails:{noDiagnosis:true,noAutomaticMedicalClaims:true,painRule:'Sharp, radiating or neurologic symptoms stop the movement and require appropriate clinical evaluation.',progressionRule:'Progress only when technique, recovery and recent performance support it.',sexUse:'Sex selection is stored when relevant to physiology or reference ranges; training changes are driven primarily by goals, performance, recovery, measurements, equipment and constraints rather than stereotypes.'},program};
@@ -195,7 +207,7 @@ export async function handleV40Api(req,env,url){
  if(url.pathname==='/api/v40/me'&&req.method==='GET')return json({ok:true,actor:{id:a.id,role:a.role,status:a.status},...await getProfile(env,a.id),latestMetrics:await latestMetrics(env,a.id)});
  if(url.pathname==='/api/v40/profile'&&req.method==='PUT')return updateProfile(req,env,a);
  if(url.pathname==='/api/v40/metrics'&&req.method==='POST')return addMetric(req,env,a);
- if(url.pathname==='/api/v40/plan'&&req.method==='GET'){let state=await ensurePlanState(env,a.id);state=await syncPlanState(env,state,a.id);const profile=await getProfile(env,a.id),metrics=await latestMetrics(env,a.id),environment=url.searchParams.get('environment')==='home'?'home':'gym';return json({ok:true,...buildPlan(state,profile,metrics,environment)})}
+ if(url.pathname==='/api/v40/plan'&&req.method==='GET'){let state=await ensurePlanState(env,a.id);state=await syncPlanState(env,state,a.id);const profile=await getProfile(env,a.id),metrics=await latestMetrics(env,a.id),environment=url.searchParams.get('environment')==='home'?'home':'gym',ready=await auditReadinessAdjustment(env,a.id,state,metrics);return json({ok:true,...buildPlan(state,profile,metrics,environment,ready)})}
  return json({error:'Not found.'},404);
 }
 
