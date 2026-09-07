@@ -68,6 +68,14 @@ for(const profile of profiles){
     const res=await page.goto(BASE,{waitUntil:'networkidle',timeout:60000});
     assert.ok(res&&res.ok(),`${profile.name}: live site failed to load`);
     assert.equal(res.headers()['x-dback-build'],SYSTEM_VERSION,`${profile.name}: live root build header is not the repository system version`);
+    await page.locator('#db41-shell.open').waitFor({state:'visible',timeout:15000});
+    assert.equal(await page.locator('#db41-nav button',{hasText:'Welcome'}).count(),1,`${profile.name}: DBACK app Welcome navigation missing`);
+    for(const label of ['Today','Plan','Progress','Library','Profile','Settings'])assert.ok(await page.locator('#db41-nav button',{hasText:label}).count(),`${profile.name}: DBACK app navigation missing ${label}`);
+    assert.ok(await page.locator('[data-google-auth="login"]').count(),`${profile.name}: Google login control missing`);
+    assert.ok(await page.locator('[data-google-auth="signup"]').count(),`${profile.name}: Google signup control missing`);
+    await noHorizontalOverflow(page,`${profile.name} DBACK app shell`);
+    await page.screenshot({path:`${OUT}/${profile.name}-app-shell.png`,fullPage:true});
+    await page.locator('#db41-close').click();
     await page.screenshot({path:`${OUT}/${profile.name}-home.png`,fullPage:true});
     await noHorizontalOverflow(page,`${profile.name} home`);
 

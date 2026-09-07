@@ -1,6 +1,6 @@
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
 
-export const PLATFORM40_VERSION='45.0.0';
+export const PLATFORM40_VERSION='46.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const readBody=async req=>{try{return await req.json()}catch{return {}}};
 const now=()=>new Date().toISOString();
@@ -50,19 +50,53 @@ async function ensureSchema(env){
   `CREATE TABLE IF NOT EXISTS coach_metrics(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,recorded_at TEXT NOT NULL,weight_kg REAL,waist_cm REAL,body_fat_pct REAL,resting_hr REAL,hrv_ms REAL,sleep_hours REAL,readiness REAL,steps INTEGER,vo2max REAL,pain_score REAL,notes TEXT)`,
   `CREATE TABLE IF NOT EXISTS coach_plan_state(user_id TEXT PRIMARY KEY,cycle_start TEXT NOT NULL,cycle_number INTEGER NOT NULL DEFAULT 1,week_number INTEGER NOT NULL DEFAULT 1,phase TEXT NOT NULL,updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS coach_adaptations(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,created_at TEXT NOT NULL,week_number INTEGER,phase TEXT,event_type TEXT NOT NULL,reason TEXT NOT NULL,evidence_json TEXT NOT NULL DEFAULT '{}',change_json TEXT NOT NULL DEFAULT '{}',safety_class TEXT NOT NULL DEFAULT 'normal')`,
-  `CREATE TABLE IF NOT EXISTS coach_admin_settings(setting_key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_by TEXT NOT NULL,updated_at TEXT NOT NULL)`
+  `CREATE TABLE IF NOT EXISTS coach_admin_settings(setting_key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_by TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS coach_identities(provider TEXT NOT NULL,provider_subject TEXT NOT NULL,user_id TEXT NOT NULL,email TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,PRIMARY KEY(provider,provider_subject))`,
+  `CREATE TABLE IF NOT EXISTS coach_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,last_seen_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS coach_oauth_states(state_hash TEXT PRIMARY KEY,code_verifier TEXT NOT NULL,created_at TEXT NOT NULL,return_to TEXT NOT NULL DEFAULT '/',intent TEXT NOT NULL DEFAULT 'login')`
  ];
  for(const s of statements)await db.prepare(s).run();
 }
 
 function bearer(req){const h=req.headers.get('authorization')||'';return h.startsWith('Bearer ')?h.slice(7).trim():''}
+function cookieValue(req,name){const raw=req.headers.get('cookie')||'';for(const part of raw.split(';')){const [k,...rest]=part.trim().split('=');if(k===name)return decodeURIComponent(rest.join('='))}return ''}
+async function sessionActor(req,env){const raw=cookieValue(req,'db_session');if(!raw)return null;const hash=await sha256(raw),ts=now();const user=await ensureDb(env).prepare("SELECT u.* FROM coach_sessions s JOIN coach_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active'").bind(hash,ts).first();if(user)await ensureDb(env).prepare('UPDATE coach_sessions SET last_seen_at=? WHERE token_hash=?').bind(ts,hash).run();return user}
 async function actor(req,env){
- const token=bearer(req);if(!token)return null;
- if(env.DBACK_ADMIN_TOKEN&&token===env.DBACK_ADMIN_TOKEN)return {id:'admin',email:'admin',display_name:'Administrator',role:'admin',status:'active'};
- const hash=await sha256(token);
- return await ensureDb(env).prepare("SELECT * FROM coach_users WHERE api_token_hash=? AND status='active'").bind(hash).first();
+ const token=bearer(req);
+ if(token){if(env.DBACK_ADMIN_TOKEN&&token===env.DBACK_ADMIN_TOKEN)return {id:'admin',email:'admin',display_name:'Administrator',role:'admin',status:'active'};const hash=await sha256(token);const user=await ensureDb(env).prepare("SELECT * FROM coach_users WHERE api_token_hash=? AND status='active'").bind(hash).first();if(user)return user}
+ return sessionActor(req,env);
 }
 async function requireAdmin(req,env){const a=await actor(req,env);return a?.role==='admin'?a:null}
+function googleConfigured(env){return Boolean(env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET)}
+function safeReturnTo(value){const v=String(value||'/');return v.startsWith('/')&&!v.startsWith('//')?v:'/'}
+async function sha256Base64Url(value){const bytes=new TextEncoder().encode(value),hash=await crypto.subtle.digest('SHA-256',bytes);let s='';for(const b of new Uint8Array(hash))s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function googleCallbackUrl(url){return new URL('/api/v40/auth/google/callback',url.origin).toString()}
+function authCookie(token,maxAge=2592000){return `db_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`}
+async function googleAuthStart(req,env,url){
+ if(!googleConfigured(env))return json({error:'Google authentication is not configured.',required:['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET']},503);
+ const state=makeToken(),verifier=makeToken(),challenge=await sha256Base64Url(verifier),stateHash=await sha256(state),ts=now(),returnTo=safeReturnTo(url.searchParams.get('return_to')),intent=url.searchParams.get('intent')==='signup'?'signup':'login';
+ await ensureDb(env).prepare('DELETE FROM coach_oauth_states WHERE created_at<?').bind(new Date(Date.now()-15*60*1000).toISOString()).run();
+ await ensureDb(env).prepare('INSERT INTO coach_oauth_states(state_hash,code_verifier,created_at,return_to,intent) VALUES(?,?,?,?,?)').bind(stateHash,verifier,ts,returnTo,intent).run();
+ const q=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:googleCallbackUrl(url),response_type:'code',scope:'openid email profile',state,code_challenge:challenge,code_challenge_method:'S256',access_type:'online',prompt:'select_account'});
+ return new Response(null,{status:302,headers:{location:'https://accounts.google.com/o/oauth2/v2/auth?'+q.toString(),'cache-control':'no-store'}});
+}
+async function ensureGoogleUser(env,info){
+ const db=ensureDb(env),ts=now();let identity=await db.prepare("SELECT user_id FROM coach_identities WHERE provider='google' AND provider_subject=?").bind(info.sub).first(),user=identity?await db.prepare('SELECT * FROM coach_users WHERE id=?').bind(identity.user_id).first():null;
+ if(!user)user=await db.prepare('SELECT * FROM coach_users WHERE email=?').bind(String(info.email).toLowerCase()).first();
+ if(!user){const id=crypto.randomUUID(),name=String(info.name||info.given_name||String(info.email).split('@')[0]||'Member');await db.prepare('INSERT INTO coach_users(id,email,display_name,role,status,api_token_hash,sex,birth_date,height_cm,weight_kg,timezone,units,experience_level,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,String(info.email).toLowerCase(),name,'user','active',null,null,null,null,null,'America/New_York','imperial','beginner',ts,ts).run();await db.prepare('INSERT INTO coach_profiles(user_id,goals_json,equipment_json,constraints_json,preferences_json,schedule_json,updated_at) VALUES(?,?,?,?,?,?,?)').bind(id,'[]','[]','[]',JSON.stringify({avatar:info.picture||null,authProvider:'google'}),'{}',ts).run();await ensurePlanState(env,id);user=await db.prepare('SELECT * FROM coach_users WHERE id=?').bind(id).first()}
+ await db.prepare("INSERT INTO coach_identities(provider,provider_subject,user_id,email,created_at,updated_at) VALUES('google',?,?,?,?,?) ON CONFLICT(provider,provider_subject) DO UPDATE SET user_id=excluded.user_id,email=excluded.email,updated_at=excluded.updated_at").bind(info.sub,user.id,String(info.email).toLowerCase(),ts,ts).run();
+ return user;
+}
+async function googleAuthCallback(req,env,url){
+ if(!googleConfigured(env))return json({error:'Google authentication is not configured.'},503);
+ const state=url.searchParams.get('state')||'',code=url.searchParams.get('code')||'';if(!state||!code)return json({error:'Missing Google authorization response.'},400);
+ const stateHash=await sha256(state),db=ensureDb(env),row=await db.prepare('SELECT * FROM coach_oauth_states WHERE state_hash=?').bind(stateHash).first();if(!row||new Date(row.created_at).getTime()<Date.now()-15*60*1000)return json({error:'Google authorization state expired or invalid.'},400);await db.prepare('DELETE FROM coach_oauth_states WHERE state_hash=?').bind(stateHash).run();
+ const tokenRes=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,redirect_uri:googleCallbackUrl(url),grant_type:'authorization_code',code_verifier:row.code_verifier})});if(!tokenRes.ok)return json({error:'Google token exchange failed.'},401);const tokens=await tokenRes.json();if(!tokens.access_token)return json({error:'Google access token missing.'},401);
+ const infoRes=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{authorization:'Bearer '+tokens.access_token}});if(!infoRes.ok)return json({error:'Google user profile could not be verified.'},401);const info=await infoRes.json();if(!info.sub||!info.email||info.email_verified!==true)return json({error:'A verified Google email is required.'},401);
+ const user=await ensureGoogleUser(env,info),session=makeToken(),hash=await sha256(session),created=now(),expires=new Date(Date.now()+30*86400000).toISOString();await db.prepare('INSERT INTO coach_sessions(token_hash,user_id,created_at,expires_at,last_seen_at) VALUES(?,?,?,?,?)').bind(hash,user.id,created,expires,created).run();await db.prepare('DELETE FROM coach_sessions WHERE expires_at<?').bind(created).run();
+ const dest=new URL(safeReturnTo(row.return_to),url.origin);dest.searchParams.set('auth','google');return new Response(null,{status:302,headers:{location:dest.toString(),'set-cookie':authCookie(session),'cache-control':'no-store'}});
+}
+async function authLogout(req,env,url){const raw=cookieValue(req,'db_session');if(raw)await ensureDb(env).prepare('DELETE FROM coach_sessions WHERE token_hash=?').bind(await sha256(raw)).run();return new Response(null,{status:302,headers:{location:new URL('/',url.origin).toString(),'set-cookie':authCookie('',0),'cache-control':'no-store'}})}
 
 function weekFrom(start){const d0=new Date(start+'T00:00:00Z');const n=Math.max(0,Math.floor((Date.now()-d0.getTime())/(7*86400000)));return (n%12)+1}
 function phaseFor(week){return PHASES.find(p=>p.weeks.includes(week))||PHASES[0]}
@@ -195,8 +229,12 @@ async function adminSummary(env){const db=ensureDb(env),users=await db.prepare("
 export async function handleV40Api(req,env,url){
  if(!url.pathname.startsWith('/api/v40/'))return null;
  await ensureSchema(env);
- if(url.pathname==='/api/v40/health'&&req.method==='GET')return json({ok:true,version:PLATFORM40_VERSION,d1:Boolean(env.DB),adminAuthConfigured:Boolean(env.DBACK_ADMIN_TOKEN)});
- if(url.pathname==='/api/v40/manifest'&&req.method==='GET')return json({version:PLATFORM40_VERSION,architecture:'multi-user adaptive coaching platform',roles:['admin','user'],cycleWeeks:12,phases:PHASES.map(x=>({name:x.name,weeks:x.weeks,intent:x.intent})),dayPurpose:DAY_PURPOSE});
+ if(url.pathname==='/api/v40/health'&&req.method==='GET')return json({ok:true,version:PLATFORM40_VERSION,d1:Boolean(env.DB),adminAuthConfigured:Boolean(env.DBACK_ADMIN_TOKEN),googleAuthConfigured:googleConfigured(env)});
+ if(url.pathname==='/api/v40/manifest'&&req.method==='GET')return json({version:PLATFORM40_VERSION,architecture:'multi-user adaptive coaching platform',roles:['admin','user'],authentication:['google-oauth-pkce','secure-session-cookie','bearer-token-fallback'],cycleWeeks:12,phases:PHASES.map(x=>({name:x.name,weeks:x.weeks,intent:x.intent})),dayPurpose:DAY_PURPOSE});
+ if(url.pathname==='/api/v40/auth/google/start'&&req.method==='GET')return googleAuthStart(req,env,url);
+ if(url.pathname==='/api/v40/auth/google/callback'&&req.method==='GET')return googleAuthCallback(req,env,url);
+ if(url.pathname==='/api/v40/auth/logout'&&(req.method==='GET'||req.method==='POST'))return authLogout(req,env,url);
+ if(url.pathname==='/api/v40/auth/status'&&req.method==='GET'){const current=await actor(req,env);return json({ok:true,googleAuthConfigured:googleConfigured(env),authenticated:Boolean(current),user:current?{id:current.id,email:current.email,display_name:current.display_name,role:current.role,status:current.status}:null})}
  if(url.pathname==='/api/v40/admin/summary'&&req.method==='GET'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return adminSummary(env)}
  if(url.pathname==='/api/v40/admin/users'&&req.method==='POST'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return createUser(req,env)}
  const adminUserToken=url.pathname.match(/^\/api\/v40\/admin\/users\/([^/]+)\/token$/);
