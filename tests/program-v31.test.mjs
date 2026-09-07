@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.9.1');
+ assert.equal(SYSTEM_VERSION,'47.9.2');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -317,7 +317,7 @@ test('v47.7 unified workout controls are operational and video window controls a
 test('v47.8 restores complete warm-up, recovery work and meaningful exercise coaching in unified Today',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- assert.match(shell,/47\.9\.1/);
+ assert.match(shell,/47\.9\.2/);
  assert.match(shell,/\/api\/v31\/program/);
  assert.match(shell,/Complete daily joint \+ alignment warm-up/);
  assert.match(shell,/Mobility \+ long flexibility/);
@@ -348,4 +348,16 @@ test('v47.9.1 prevents adaptive KPI overflow and clipping in third-width cards',
  assert.match(shell,/\.db41-card\.third \.db41-kpis\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
  assert.match(shell,/\.db41-kpi\{min-width:0;overflow:hidden/);
  assert.match(shell,/overflow-wrap:anywhere/);
+});
+
+
+test('v47.9.2 prefers highest-quality instructional video sources and requests HD playback',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ assert.match(shell,/APP41_VERSION='47\.9\.2'/);
+ assert.match(shell,/videoQualityScore/);
+ assert.match(shell,/2160p\|4k\|uhd/);
+ assert.match(shell,/1080p\|full hd\|fhd/);
+ assert.match(shell,/vq=hd1080/);
+ assert.match(shell,/HD\/4K preferred/);
+ assert.match(shell,/tutorial 1080p 4K professional coach physical therapy/);
 });
