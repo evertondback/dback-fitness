@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.0.0');
+ assert.equal(SYSTEM_VERSION,'47.1.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -238,4 +238,14 @@ test('v47 unifies the app shell and reconciles home/gym equipment catalogs',asyn
  assert.match(catalog,/Stair Climber \/ StepMill/);
  assert.match(platform,/equipmentNamesForMode/);
  assert.match(platform,/catalogCount/);
+});
+
+test('v47.1 supports metric and US customary measurements with canonical conversion',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const token of ['Metric · kg / cm','US · lb / ft-in / in','LB_PER_KG','CM_PER_IN','weightToKg','lengthToCm','profileHeightCm','data-units="metric"','data-units="imperial"'])assert.ok(shell.includes(token),token);
+ assert.match(shell,/Weight \('\+\(S\.units==='imperial'\?'lb':'kg'\)\+'\)/);
+ assert.match(shell,/Height \(ft \/ in\)/);
+ assert.match(shell,/Height \(cm\)/);
+ assert.match(shell,/units:S\.units/);
+ assert.match(shell,/waist_cm:lengthToCm/);
 });

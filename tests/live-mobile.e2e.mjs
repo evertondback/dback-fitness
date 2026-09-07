@@ -49,9 +49,14 @@ async function openDrawer(page){
 }
 
 async function shellNav(page,text){
-  const direct=page.locator('#db41-nav button').filter({hasText:new RegExp(`^${text}$`)});
-  if(!(await direct.isVisible()))await openDrawer(page);
+  const panel=page.locator('.db41-panel');
+  const menu=page.locator('#db41-mobile-menu');
+  if(await menu.isVisible()){
+    const open=await panel.evaluate(el=>el.classList.contains('mobile-menu-open'));
+    if(!open)await openDrawer(page);
+  }
   const button=page.locator('#db41-nav button').filter({hasText:new RegExp(`^${text}$`)});
+  await button.scrollIntoViewIfNeeded();
   await button.click();
   await page.waitForTimeout(350);
 }
