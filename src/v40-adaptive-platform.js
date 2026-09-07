@@ -1,6 +1,6 @@
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
 
-export const PLATFORM40_VERSION='43.0.0';
+export const PLATFORM40_VERSION='44.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const readBody=async req=>{try{return await req.json()}catch{return {}}};
 const now=()=>new Date().toISOString();
@@ -157,8 +157,28 @@ async function updateProfile(req,env,a){
  return json({ok:true,...await getProfile(env,a.id)});
 }
 
+
+async function updateAdminUser(req,env,admin,userId){
+ const db=ensureDb(env),body=await readBody(req),target=await db.prepare('SELECT * FROM coach_users WHERE id=?').bind(userId).first();
+ if(!target)return json({error:'User not found.'},404);
+ if(admin.id===userId&&(('status' in body&&body.status!=='active')||('role' in body&&body.role!=='admin')))return json({error:'Administrators cannot remove their own active admin access.'},400);
+ const allowed=['display_name','email','role','status','experience_level'],sets=[],vals=[];
+ for(const k of allowed){if(!(k in body))continue;let v=body[k];if(k==='email')v=String(v||'').trim().toLowerCase();if(k==='role')v=v==='admin'?'admin':'user';if(k==='status')v=v==='inactive'?'inactive':'active';sets.push(`${k}=?`);vals.push(v)}
+ if(!sets.length)return json({error:'No supported user fields supplied.'},400);
+ vals.push(now(),userId);await db.prepare(`UPDATE coach_users SET ${sets.join(',')},updated_at=? WHERE id=?`).bind(...vals).run();
+ const next=await db.prepare("SELECT id,email,display_name,role,status,sex,birth_date,height_cm,weight_kg,timezone,units,experience_level,created_at,updated_at FROM coach_users WHERE id=?").bind(userId).first();
+ return json({ok:true,user:next});
+}
+async function rotateAdminUserToken(env,admin,userId){
+ const db=ensureDb(env),target=await db.prepare('SELECT id,email,display_name,role,status FROM coach_users WHERE id=?').bind(userId).first();
+ if(!target)return json({error:'User not found.'},404);
+ const token=makeToken(),hash=await sha256(token);await db.prepare('UPDATE coach_users SET api_token_hash=?,updated_at=? WHERE id=?').bind(hash,now(),userId).run();
+ await db.prepare('INSERT INTO coach_adaptations(id,user_id,created_at,week_number,phase,event_type,reason,evidence_json,change_json,safety_class) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),userId,now(),null,null,'admin-token-rotation','Administrator rotated the user access token.',JSON.stringify({adminId:admin.id}),JSON.stringify({tokenRotated:true}),'normal').run();
+ return json({ok:true,user:{id:target.id,email:target.email,display_name:target.display_name,role:target.role,status:target.status},apiToken:token,warning:'Store this token securely. The previous user token is no longer valid.'});
+}
+
 async function addMetric(req,env,a){const x=await readBody(req),id=crypto.randomUUID(),ts=x.recorded_at||now();await ensureDb(env).prepare('INSERT INTO coach_metrics(id,user_id,recorded_at,weight_kg,waist_cm,body_fat_pct,resting_hr,hrv_ms,sleep_hours,readiness,steps,vo2max,pain_score,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,a.id,ts,x.weight_kg??null,x.waist_cm??null,x.body_fat_pct??null,x.resting_hr??null,x.hrv_ms??null,x.sleep_hours??null,x.readiness??null,x.steps??null,x.vo2max??null,x.pain_score??null,x.notes??null).run();return json({ok:true,id,recorded_at:ts})}
-async function adminSummary(env){const db=ensureDb(env),users=await db.prepare("SELECT id,email,display_name,role,status,sex,birth_date,height_cm,weight_kg,timezone,units,experience_level,created_at,updated_at FROM coach_users ORDER BY created_at DESC").all(),adaptations=await db.prepare('SELECT * FROM coach_adaptations ORDER BY created_at DESC LIMIT 100').all();return json({ok:true,version:PLATFORM40_VERSION,users:users.results||[],recentAdaptations:adaptations.results||[],capabilities:['multi-user profiles','admin-only user management','per-user metrics','12-week adaptive cycles','daily/weekly/exercise purpose','readiness-based load and volume adjustments','health guardrails','auditable adaptation events']})}
+async function adminSummary(env){const db=ensureDb(env),users=await db.prepare("SELECT id,email,display_name,role,status,sex,birth_date,height_cm,weight_kg,timezone,units,experience_level,created_at,updated_at FROM coach_users ORDER BY created_at DESC").all(),adaptations=await db.prepare('SELECT * FROM coach_adaptations ORDER BY created_at DESC LIMIT 100').all();return json({ok:true,version:PLATFORM40_VERSION,users:users.results||[],recentAdaptations:adaptations.results||[],capabilities:['multi-user profiles','admin user lifecycle management','admin-only user management','per-user metrics','12-week adaptive cycles','daily/weekly/exercise purpose','readiness-based load and volume adjustments','health guardrails','auditable adaptation events']})}
 
 export async function handleV40Api(req,env,url){
  if(!url.pathname.startsWith('/api/v40/'))return null;
@@ -167,6 +187,10 @@ export async function handleV40Api(req,env,url){
  if(url.pathname==='/api/v40/manifest'&&req.method==='GET')return json({version:PLATFORM40_VERSION,architecture:'multi-user adaptive coaching platform',roles:['admin','user'],cycleWeeks:12,phases:PHASES.map(x=>({name:x.name,weeks:x.weeks,intent:x.intent})),dayPurpose:DAY_PURPOSE});
  if(url.pathname==='/api/v40/admin/summary'&&req.method==='GET'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return adminSummary(env)}
  if(url.pathname==='/api/v40/admin/users'&&req.method==='POST'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return createUser(req,env)}
+ const adminUserToken=url.pathname.match(/^\/api\/v40\/admin\/users\/([^/]+)\/token$/);
+ if(adminUserToken&&req.method==='POST'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return rotateAdminUserToken(env,a,decodeURIComponent(adminUserToken[1]))}
+ const adminUser=url.pathname.match(/^\/api\/v40\/admin\/users\/([^/]+)$/);
+ if(adminUser&&req.method==='PATCH'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return updateAdminUser(req,env,a,decodeURIComponent(adminUser[1]))}
  const a=await actor(req,env);if(!a)return json({error:'Authorization required.'},401);
  if(url.pathname==='/api/v40/me'&&req.method==='GET')return json({ok:true,actor:{id:a.id,role:a.role,status:a.status},...await getProfile(env,a.id),latestMetrics:await latestMetrics(env,a.id)});
  if(url.pathname==='/api/v40/profile'&&req.method==='PUT')return updateProfile(req,env,a);

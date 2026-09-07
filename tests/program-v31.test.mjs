@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'43.0.0');
+ assert.equal(SYSTEM_VERSION,'44.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -175,4 +175,18 @@ test('v43 environment-aware planning and role-aware navigation are wired',async(
  assert.match(shell,/S\.me\?\.actor\?\.role==='admin'/);
  assert.match(shell,/isAdmin\?\[\['admin','Admin'\]\]:\[\]/);
  assert.match(shell,/Training environment updated to/);
+});
+
+
+test('v44 admin lifecycle controls are wired end to end',async()=>{
+ const api=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ const ui=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ assert.match(api,/updateAdminUser/);
+ assert.match(api,/rotateAdminUserToken/);
+ assert.match(api,/admin-token-rotation/);
+ assert.match(api,/admin\\/users\\/\(\[\^\/\]\+\)\\/token/);
+ assert.match(ui,/data-user-action=\"status\"/);
+ assert.match(ui,/data-user-action=\"role\"/);
+ assert.match(ui,/data-user-action=\"token\"/);
+ assert.match(ui,/adminUserAction/);
 });
