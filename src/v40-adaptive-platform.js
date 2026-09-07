@@ -113,7 +113,13 @@ async function updateProfile(req,env,a){
  for(const k of allowed)if(k in body){sets.push(`${k}=?`);vals.push(body[k])}
  if(sets.length){vals.push(ts,a.id);await db.prepare(`UPDATE coach_users SET ${sets.join(',')},updated_at=? WHERE id=?`).bind(...vals).run()}
  const p=await db.prepare('SELECT * FROM coach_profiles WHERE user_id=?').bind(a.id).first();
- const next={goals:body.goals??parse(p?.goals_json)||[],equipment:body.equipment??parse(p?.equipment_json)||[],constraints:body.constraints??parse(p?.constraints_json)||[],preferences:body.preferences??parse(p?.preferences_json)||{},schedule:body.schedule??parse(p?.schedule_json)||{}};
+ const next={
+  goals:body.goals??(parse(p?.goals_json)||[]),
+  equipment:body.equipment??(parse(p?.equipment_json)||[]),
+  constraints:body.constraints??(parse(p?.constraints_json)||[]),
+  preferences:body.preferences??(parse(p?.preferences_json)||{}),
+  schedule:body.schedule??(parse(p?.schedule_json)||{})
+ };
  await db.prepare(`INSERT INTO coach_profiles(user_id,goals_json,equipment_json,constraints_json,preferences_json,schedule_json,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET goals_json=excluded.goals_json,equipment_json=excluded.equipment_json,constraints_json=excluded.constraints_json,preferences_json=excluded.preferences_json,schedule_json=excluded.schedule_json,updated_at=excluded.updated_at`).bind(a.id,JSON.stringify(next.goals),JSON.stringify(next.equipment),JSON.stringify(next.constraints),JSON.stringify(next.preferences),JSON.stringify(next.schedule),ts).run();
  return json({ok:true,...await getProfile(env,a.id)});
 }
