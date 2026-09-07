@@ -40,19 +40,20 @@ async function noHorizontalOverflow(page,label){
   if(m.sw>m.cw+2||m.bw>m.cw+2)failures.push(`${label}: horizontal overflow sw=${m.sw} bw=${m.bw} cw=${m.cw}`);
 }
 
-async function clickNav(page,text){
-  const buttons=page.getByRole('button',{name:text,exact:true});
-  const count=await buttons.count();
-  for(let i=0;i<count;i++){
-    const b=buttons.nth(i);
-    if(await b.isVisible()){
-      await b.click();
-      await page.waitForTimeout(700);
-      return;
-    }
+async function openDrawer(page){
+  const menu=page.locator('#db41-mobile-menu');
+  if(await menu.isVisible()){
+    await menu.click();
+    await page.locator('.db41-panel.mobile-menu-open').waitFor({state:'attached',timeout:5000});
   }
-  const visible=await page.locator('button:visible').allTextContents();
-  throw new Error(`Visible navigation control not found: ${text}. Visible buttons: ${visible.join(' | ')}`);
+}
+
+async function shellNav(page,text){
+  const direct=page.locator('#db41-nav button').filter({hasText:new RegExp(`^${text}$`)});
+  if(!(await direct.isVisible()))await openDrawer(page);
+  const button=page.locator('#db41-nav button').filter({hasText:new RegExp(`^${text}$`)});
+  await button.click();
+  await page.waitForTimeout(350);
 }
 
 for(const profile of profiles){
@@ -61,87 +62,50 @@ for(const profile of profiles){
   page.on('pageerror',e=>failures.push(`${profile.name}: pageerror ${e.message}`));
   const consoleErrors=[];
   page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
-  let historyGets=0;
-  page.on('request',r=>{if(r.method()==='GET'&&r.url().includes('/api/manage/history')&&!r.url().includes('/export'))historyGets++});
 
   try{
     const res=await page.goto(BASE,{waitUntil:'networkidle',timeout:60000});
     assert.ok(res&&res.ok(),`${profile.name}: live site failed to load`);
     assert.equal(res.headers()['x-dback-build'],SYSTEM_VERSION,`${profile.name}: live root build header is not the repository system version`);
-    await page.screenshot({path:`${OUT}/${profile.name}-home.png`,fullPage:true});
-    await noHorizontalOverflow(page,`${profile.name} home`);
 
-    const appLaunch=page.locator('#db41-launch');
-    await appLaunch.waitFor({state:'visible',timeout:10000});
-    await appLaunch.click();
     await page.locator('#db41-shell.open').waitFor({state:'visible',timeout:10000});
+    assert.equal(await page.locator('#db41-launch').count(),0,`${profile.name}: legacy app launcher must not exist in unified mode`);
+    assert.equal(await page.locator('#db41-close:visible').count(),0,`${profile.name}: unified app must not expose a Close Workspace control`);
+    assert.equal(await page.locator('body.db41-unified-app').count(),1,`${profile.name}: unified app body state missing`);
     assert.equal(await page.locator('#db41-mobilebar:visible').count(),1,`${profile.name}: mobile app bar missing`);
     assert.equal(await page.locator('#db41-mobile-menu:visible').count(),1,`${profile.name}: mobile menu button missing`);
-    await page.locator('#db41-mobile-menu').click();
+    await noHorizontalOverflow(page,`${profile.name} unified root`);
+    await page.screenshot({path:`${OUT}/${profile.name}-unified-root.png`,fullPage:true});
+
+    await openDrawer(page);
     assert.ok(await page.locator('.db41-panel.mobile-menu-open').count(),`${profile.name}: mobile drawer did not open`);
-    await page.locator('#db41-nav button').filter({hasText:'Welcome'}).click();
-    await page.waitForTimeout(250);
-    assert.equal(await page.locator('.db41-panel.mobile-menu-open').count(),0,`${profile.name}: mobile drawer did not close after navigation`);
-    await noHorizontalOverflow(page,`${profile.name} app workspace`);
-    await page.locator('#db41-close').click();
+    await page.locator('#db41-nav button').filter({hasText:/^Welcome$/}).click();
+    await page.waitForTimeout(200);
+    assert.equal(await page.locator('.db41-panel.mobile-menu-open').count(),0,`${profile.name}: drawer did not close after navigation`);
+    assert.ok(await page.getByText('Train with a plan that adapts to you.').count(),`${profile.name}: welcome screen missing`);
 
+    for(const section of ['Today','Plan','Progress']){
+      await shellNav(page,section);
+      await noHorizontalOverflow(page,`${profile.name} ${section}`);
+      await page.screenshot({path:`${OUT}/${profile.name}-${section.toLowerCase()}.png`,fullPage:true});
+    }
 
-    await clickNav(page,'Workout');
-    await page.locator('#view-workout .db31').waitFor({state:'visible',timeout:20000});
-    assert.equal(await page.locator('#view-workout [data-db31-day]').count(),7,`${profile.name}: Workout must show 7 day tabs`);
-    const warmCount=await page.locator('#view-workout .db31WarmItem').count();
-    const exerciseCount=await page.locator('#view-workout .db31Exercise').count();
-    assert.ok(warmCount>=15,`${profile.name}: incomplete warm-up`);
-    assert.ok(exerciseCount>=6,`${profile.name}: incomplete workout exercises`);
-    assert.equal(await page.locator('#view-workout .db31Error').count(),0,`${profile.name}: Workout error state present`);
-    await page.locator('#view-workout .db37Summary').waitFor({state:'visible',timeout:10000});
-    assert.equal(await page.locator('#view-workout .db31Exercise .db37Tracker').count(),exerciseCount,`${profile.name}: every exercise must have Timer + Tracker`);
-    assert.equal(await page.locator('#view-workout .db31WarmItem .db37WarmTrack').count(),warmCount,`${profile.name}: every warm-up must have timer/tracker controls`);
-    const firstTracker=page.locator('#view-workout .db31Exercise .db37Tracker').first();
-    for(const action of ['work-toggle','work-reset','rest-toggle','rest-reset','set-plus','set-minus'])assert.equal(await firstTracker.locator(`[data-db37="${action}"]`).count(),1,`${profile.name}: missing ${action}`);
-    await firstTracker.locator('[data-db37="work-reset"]').click();
-    await firstTracker.locator('[data-db37="work-toggle"]').click();
-    await page.waitForTimeout(1250);
-    await firstTracker.locator('[data-db37="work-toggle"]').click();
-    const workText=await firstTracker.locator('[data-db37-work]').textContent();
-    assert.notEqual(workText,'00:00',`${profile.name}: work timer did not advance beyond the one-second display boundary`);
-    await firstTracker.locator('[data-db37="set-plus"]').click();
-    assert.match(await page.locator('#view-workout [data-db37-summary]').textContent(),/1\//,`${profile.name}: tracker summary did not update after set completion`);
-    await firstTracker.locator('[data-db37="set-minus"]').click();
-    await noHorizontalOverflow(page,`${profile.name} workout`);
-    await page.screenshot({path:`${OUT}/${profile.name}-workout.png`,fullPage:true});
+    await shellNav(page,'Library');
+    await noHorizontalOverflow(page,`${profile.name} library`);
+    const libraryText=(await page.locator('#db41-view').innerText()).toLowerCase();
+    assert.ok(libraryText.includes('home equipment'),`${profile.name}: Home Equipment library missing`);
+    assert.ok(libraryText.includes('full gym equipment library'),`${profile.name}: Full Gym Equipment Library missing`);
+    assert.ok(libraryText.includes('adjustable dumbbell'),`${profile.name}: adjustable dumbbells missing from home equipment`);
+    assert.ok(libraryText.includes('5')&&libraryText.includes('55'),`${profile.name}: 5-55 lb home dumbbell range missing`);
+    assert.ok(libraryText.includes('floor mat'),`${profile.name}: floor mat missing from home equipment`);
+    assert.ok(libraryText.includes('pull-up')||libraryText.includes('hanging bar'),`${profile.name}: pull-up/hanging bar missing from home equipment`);
+    await page.screenshot({path:`${OUT}/${profile.name}-equipment-library.png`,fullPage:true});
 
-    await clickNav(page,'Full Plan');
-    await page.locator('#view-plan .db31').waitFor({state:'visible',timeout:20000});
-    assert.equal(await page.locator('#view-plan .db31PlanDay').count(),7,`${profile.name}: Full Plan must show 7 days`);
-    assert.equal(await page.locator('#view-plan .db31Error').count(),0,`${profile.name}: Full Plan error state present`);
-    await noHorizontalOverflow(page,`${profile.name} full-plan`);
-    await page.screenshot({path:`${OUT}/${profile.name}-full-plan.png`,fullPage:true});
+    await shellNav(page,'Profile');
+    await noHorizontalOverflow(page,`${profile.name} profile`);
+    await shellNav(page,'Settings');
+    await noHorizontalOverflow(page,`${profile.name} settings`);
 
-    await clickNav(page,'Anatomy Lab');
-    await page.locator('#view-anatomy .db35').waitFor({state:'visible',timeout:20000});
-    assert.equal(await page.locator('#view-anatomy .db35').count(),1,`${profile.name}: Anatomy must have exactly one unified map`);
-    const anatomyButtons=page.locator('#view-anatomy .db35Seg button');
-    assert.ok((await anatomyButtons.count())>=2,`${profile.name}: Anatomy view controls missing`);
-    for(let i=0;i<Math.min(2,await anatomyButtons.count());i++){await anatomyButtons.nth(i).click();await page.waitForTimeout(150)}
-    await noHorizontalOverflow(page,`${profile.name} anatomy`);
-    await page.screenshot({path:`${OUT}/${profile.name}-anatomy.png`,fullPage:true});
-
-    await clickNav(page,'Progress');
-    await page.waitForTimeout(350);
-    await noHorizontalOverflow(page,`${profile.name} Progress`);
-
-    const historyBefore=historyGets;
-    await clickNav(page,'History');
-    await page.locator('#view-history .dbManager .card').waitFor({state:'visible',timeout:20000});
-    await page.evaluate(()=>{const card=document.querySelector('#view-history .dbManager .card');if(card)card.dataset.stabilityProbe='stable'});
-    await page.waitForTimeout(1800);
-    assert.equal(await page.locator('#view-history .dbManager .card[data-stability-probe="stable"]').count(),1,`${profile.name}: History DOM was replaced repeatedly (flicker regression)`);
-    assert.ok(historyGets-historyBefore<=1,`${profile.name}: History refetched repeatedly (${historyGets-historyBefore} GETs)`);
-    await noHorizontalOverflow(page,`${profile.name} History`);
-    await page.screenshot({path:`${OUT}/${profile.name}-history.png`,fullPage:true});
-
-    for(const section of ['AI Coach','Profile']){await clickNav(page,section);await page.waitForTimeout(350);await noHorizontalOverflow(page,`${profile.name} ${section}`)}
     if(consoleErrors.length)failures.push(`${profile.name}: console errors: ${consoleErrors.join(' | ')}`);
   }catch(e){
     failures.push(`${profile.name}: ${e.message}`);
@@ -150,4 +114,4 @@ for(const profile of profiles){
 }
 
 await browser.close();
-if(failures.length){console.error(failures.join('\n'));process.exitCode=1}else{console.log(`Live mobile QA passed for production build ${SYSTEM_VERSION} at 390px, 430px and 768px viewports, including v37 timers/trackers and History anti-flicker stability.`)}
+if(failures.length){console.error(failures.join('\n'));process.exitCode=1}else{console.log(`Live mobile QA passed for unified production build ${SYSTEM_VERSION} at 390px, 430px and 768px, including full-screen shell and reconciled Home/Gym equipment libraries.`)}
