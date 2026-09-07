@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'46.1.0');
+ assert.equal(SYSTEM_VERSION,'47.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -220,4 +220,22 @@ test('v46.1 app shell has dedicated mobile navigation and touch-safe responsive 
  const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['db41-mobile-menu','db41-mobilebar','mobile-menu-open','100dvh','safe-area-inset-bottom','touch-action:manipulation','db41-tablewrap'])assert.ok(source.includes(token),token);
  assert.match(source,/@media\(max-width:390px\)/);
+});
+
+
+test('v47 unifies the app shell and reconciles home/gym equipment catalogs',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ const catalog=await readFile(new URL('../src/v47-equipment-catalog.js',import.meta.url),'utf8');
+ assert.match(shell,/db41-unified-app/);
+ assert.match(shell,/Unified Fitness Operating System/);
+ assert.doesNotMatch(shell,/classList\.remove\('open'\)/);
+ assert.match(shell,/Full gym equipment library/);
+ assert.match(catalog,/5-55 lb each/);
+ assert.match(catalog,/Pull-Up \/ Hanging Bar/);
+ assert.match(catalog,/Functional Trainer \/ Dual Adjustable Pulley/);
+ assert.match(catalog,/Hack Squat/);
+ assert.match(catalog,/Stair Climber \/ StepMill/);
+ assert.match(platform,/equipmentNamesForMode/);
+ assert.match(platform,/catalogCount/);
 });

@@ -1,6 +1,7 @@
+import {HOME_EQUIPMENT_CATALOG,GYM_EQUIPMENT_CATALOG,equipmentNamesForMode} from './v47-equipment-catalog.js';
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
 
-export const PLATFORM40_VERSION='46.0.0';
+export const PLATFORM40_VERSION='47.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const readBody=async req=>{try{return await req.json()}catch{return {}}};
 const now=()=>new Date().toISOString();
@@ -148,7 +149,7 @@ async function auditReadinessAdjustment(env,userId,state,metrics){
  return adjustment;
 }
 
-function equipmentNames(profile){return (profile.profile.equipment||[]).map(x=>String(typeof x==='string'?x:(x.name||x.key||'')).toLowerCase()).filter(Boolean)}
+function equipmentNames(profile,environment='home'){return equipmentNamesForMode(environment,profile?.profile?.equipment||[])}
 function hasAnyEquipment(names,terms){return terms.some(t=>names.some(n=>n.includes(t)))}
 function homeAdaptExercise(e,names){
  const name=String(e.name||'').toLowerCase(),load=String(e.load||'').toLowerCase();
@@ -168,14 +169,15 @@ function homeAdaptExercise(e,names){
 }
 function environmentExercise(e,profile,environment){
  if(environment!=='home')return {...e,environment:{mode:'gym',compatible:true,substituted:false}};
- return homeAdaptExercise(e,equipmentNames(profile));
+ return homeAdaptExercise(e,equipmentNames(profile,'home'));
 }
 
 function buildPlan(state,profile,metrics,environment='gym',readyOverride=null){
  const week=weekFrom(state.cycle_start),phase=phaseFor(week),ready=readyOverride||readinessAdjustment(metrics),program={};
  const goals=profile.profile.goals||[];const goalContext=goals.length?goals.map(g=>typeof g==='string'?g:(g.name||g.key||'goal')).join(', '):'general strength, muscle, movement quality and healthspan';
  for(const day of DAY_ORDER){const src=PROGRAM31[day];program[day]={...src,purpose:DAY_PURPOSE[day],weekPurpose:`${phase.name}: ${phase.intent}`,adaptationMode:ready.mode,exercises:src.exercises.map((e,i)=>{const adapted=environmentExercise(e,profile,environment);return {...adapted,purpose:adapted.purpose||exercisePurpose(adapted),priority:i<3?'primary':'support',adaptive:{loadFactor:Number((phase.load*ready.load).toFixed(2)),volumeFactor:Number(ready.volume.toFixed(2)),rirAdjustment:phase.rirDelta+ready.rir,rule:'Change one meaningful progression variable at a time unless safety or recovery requires regression.'}}})}}
- return {version:PLATFORM40_VERSION,environment:{mode:environment,profileEquipment:equipmentNames(profile)},cycle:{cycleNumber:state.cycle_number||1,week,phase:phase.name,phaseIntent:phase.intent,goalContext},readiness:ready,guardrails:{noDiagnosis:true,noAutomaticMedicalClaims:true,painRule:'Sharp, radiating or neurologic symptoms stop the movement and require appropriate clinical evaluation.',progressionRule:'Progress only when technique, recovery and recent performance support it.',sexUse:'Sex selection is stored when relevant to physiology or reference ranges; training changes are driven primarily by goals, performance, recovery, measurements, equipment and constraints rather than stereotypes.'},program};
+ const activeCatalog=environment==='home'?HOME_EQUIPMENT_CATALOG:GYM_EQUIPMENT_CATALOG;
+ return {version:PLATFORM40_VERSION,environment:{mode:environment,profileEquipment:equipmentNames(profile,environment),catalogCount:activeCatalog.length,catalog:activeCatalog},cycle:{cycleNumber:state.cycle_number||1,week,phase:phase.name,phaseIntent:phase.intent,goalContext},readiness:ready,guardrails:{noDiagnosis:true,noAutomaticMedicalClaims:true,painRule:'Sharp, radiating or neurologic symptoms stop the movement and require appropriate clinical evaluation.',progressionRule:'Progress only when technique, recovery and recent performance support it.',sexUse:'Sex selection is stored when relevant to physiology or reference ranges; training changes are driven primarily by goals, performance, recovery, measurements, equipment and constraints rather than stereotypes.'},program};
 }
 
 async function createUser(req,env){
