@@ -127,8 +127,8 @@ test('v41 app shell exposes core universal user flows',async()=>{
  const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const label of ['Today','Plan','Progress','Library','Profile','Admin','Settings'])assert.ok(source.includes(label),label);
  for(const route of ['/api/v40/me','/api/v40/plan','/api/v40/metrics','/api/v40/profile','/api/v40/admin/summary','/api/v40/admin/users'])assert.ok(source.includes(route),route);
- assert.match(source,/data-mode=\\"gym\\"/);
- assert.match(source,/data-mode=\\"home\\"/);
+ assert.match(source,/data-mode="gym"/);
+ assert.match(source,/data-mode="home"/);
  assert.match(source,/Coach Copilot/);
  assert.match(source,/Purpose:/);
 });
