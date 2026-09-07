@@ -357,3 +357,9 @@ test('v47.9.2 prefers highest-quality instructional video sources and requests H
  assert.match(shell,/HD\/4K preferred/);
  assert.match(shell,/tutorial 1080p 4K professional coach physical therapy/);
 });
+
+test('filtered gym result groups open automatically so search matches are visible',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ assert.match(shell,/items===HOME_EQUIPMENT\|\|items!==GYM_EQUIPMENT/);
+ assert.match(shell,/db41-gym-results/);
+});
