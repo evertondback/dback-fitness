@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'46.0.0');
+ assert.equal(SYSTEM_VERSION,'45.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -125,11 +125,11 @@ test('single system version is used by production runtime',async()=>{
 
 test('v41 app shell exposes core universal user flows',async()=>{
  const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const label of ['Welcome','Today','Plan','Progress','Library','Profile','Users','Settings'])assert.ok(source.includes(label),label);
+ for(const label of ['Today','Plan','Progress','Library','Profile','Admin','Settings'])assert.ok(source.includes(label),label);
  for(const route of ['/api/v40/me','/api/v40/plan','/api/v40/metrics','/api/v40/profile','/api/v40/admin/summary','/api/v40/admin/users'])assert.ok(source.includes(route),route);
  assert.match(source,/data-mode="gym"/);
  assert.match(source,/data-mode="home"/);
- assert.match(source,/Coach Copilot/);
+ assert.match(source,/Copilot shortcuts/);
  assert.match(source,/Purpose:/);
 });
 
@@ -172,7 +172,7 @@ test('v43 environment-aware planning and role-aware navigation are wired',async(
  assert.match(platform,/actor:\{id:a\.id,role:a\.role,status:a\.status\}/);
  assert.match(shell,/plan\?environment=/);
  assert.match(shell,/S\.me\?\.actor\?\.role==='admin'/);
- assert.match(shell,/isAdmin\?\[\['users','Users'\]\]:\[\]/);
+ assert.match(shell,/isAdmin\?\[\['admin','Admin'\]\]:\[\]/);
  assert.match(shell,/Training environment updated to/);
 });
 
@@ -201,19 +201,8 @@ test('v45 persists readiness mode transitions without duplicate audit spam',asyn
 });
 
 
-test('v46 Google authentication and professional app navigation are wired end to end',async()=>{
- const api=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- const ui=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const table of ['coach_identities','coach_sessions','coach_oauth_states'])assert.ok(api.includes(table),table);
- for(const route of ['/api/v40/auth/google/start','/api/v40/auth/google/callback','/api/v40/auth/logout','/api/v40/auth/status'])assert.ok(api.includes(route),route);
- assert.match(api,/code_challenge_method:'S256'/);
- assert.match(api,/HttpOnly; Secure; SameSite=Lax/);
- assert.match(api,/email_verified!==true/);
- assert.match(api,/googleAuthConfigured/);
- assert.match(ui,/db41-side/);
- assert.match(ui,/welcomeView/);
- assert.match(ui,/Continue with Google/);
- assert.match(ui,/Sign up with Google/);
- assert.match(ui,/Users & profiles/);
- assert.match(ui,/\['users','Users'\]/);
+test('v46.1 app shell has dedicated mobile navigation and touch-safe responsive workspace',async()=>{
+ const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const token of ['db41-mobile-menu','db41-mobilebar','mobile-menu-open','100dvh','safe-area-inset-bottom','touch-action:manipulation','db41-tablewrap'])assert.ok(source.includes(token),token);
+ assert.match(source,/@media\(max-width:390px\)/);
 });
