@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'41.0.0');
+ assert.equal(SYSTEM_VERSION,'42.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -153,4 +153,12 @@ test('current anatomy UI has single-owner cleanup and mobile full-screen contrac
  assert.match(source,/#view-anatomy>\.db35~\*\{display:none!important\}/);
  assert.match(source,/db35Active/);
  assert.match(source,/db35Seg/);
+});
+
+test('v42 persists adaptive week and phase transitions with audit records',async()=>{
+ const source=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ assert.match(source,/syncPlanState/);
+ assert.match(source,/cycle-state-change/);
+ assert.match(source,/UPDATE coach_plan_state SET week_number=\?,phase=\?/);
+ assert.match(source,/INSERT INTO coach_adaptations/);
 });
