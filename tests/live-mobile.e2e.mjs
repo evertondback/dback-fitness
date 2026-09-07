@@ -80,6 +80,8 @@ for(const profile of profiles){
     assert.equal(await page.locator('#db41-mobilebar:visible').count(),1,`${profile.name}: mobile app bar missing`);
     assert.equal(await page.locator('#db41-mobile-menu:visible').count(),1,`${profile.name}: mobile menu button missing`);
     await noHorizontalOverflow(page,`${profile.name} unified root`);
+    const visibleText=await page.locator('body').innerText();
+    assert.ok(!/[ÃÂ�]/.test(visibleText),`${profile.name}: mojibake detected in visible mobile text`);
     await page.screenshot({path:`${OUT}/${profile.name}-unified-root.png`,fullPage:true});
 
     await openDrawer(page);

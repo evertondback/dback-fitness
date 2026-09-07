@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.2.0');
+ assert.equal(SYSTEM_VERSION,'47.2.1');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -254,4 +254,11 @@ test('v47.1 supports metric and US customary measurements with canonical convers
 test('v47.2 adds first-run profile setup and completion guidance',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['profileCompletion','setupBanner','setupView','Profile setup','Save & start plan','Finish setup','daysPerWeek','minutesPerSession'])assert.ok(shell.includes(token),token);
+});
+
+
+test('v47.2.1 renders clean UTF-8 coaching text without mojibake',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const bad of ['Ã','Â','â','�'])assert.ok(!shell.includes(bad),`mojibake token present: ${bad}`);
+ for(const good of [' × ',' · ','— copy now:'])assert.ok(shell.includes(good),`expected clean UTF-8 text: ${good}`);
 });
