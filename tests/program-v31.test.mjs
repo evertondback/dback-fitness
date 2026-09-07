@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.3.0');
+ assert.equal(SYSTEM_VERSION,'47.4.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -268,4 +268,11 @@ test('v47.3 mobile-first shell keeps workout controls readable and touch safe',a
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['db41-scrim','db41-prescription','db41-exmeta','scroll-snap-type:x proximity','safe-area-inset-bottom','@media(max-width:520px)'])assert.ok(shell.includes(token),token);
  assert.match(shell,/min-height:50px/);
+});
+
+
+test('v47.4 restores instructional videos inside the unified mobile app',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const token of ['Watch form video','db41-videoModal','db41-videoFrame','data-video','videoSourceFor','embedVideoURL','youtube-nocookie.com','loadVideoSources','/api/manage/videos'])assert.ok(shell.includes(token),token);
+ assert.match(shell,/x\?\.video/);
 });
