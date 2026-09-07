@@ -41,3 +41,24 @@ jobs:
           name: mobile-qa-screenshots
           path: artifacts/mobile-qa
           if-no-files-found: ignore
+
+  live-desktop-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e:desktop
+        env:
+          DBACK_LIVE_URL: https://dback-fitness.dback.workers.dev
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-qa-screenshots
+          path: artifacts/desktop-qa
+          if-no-files-found: ignore
