@@ -253,5 +253,5 @@ test('v47.1 supports metric and US customary measurements with canonical convers
 
 test('v47.2 adds first-run profile setup and completion guidance',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['profileCompletion','setupBanner','setupView','Profile setup','Save & start plan','data-tabjump=\"setup\"','daysPerWeek','minutesPerSession'])assert.ok(shell.includes(token),token);
+ for(const token of ['profileCompletion','setupBanner','setupView','Profile setup','Save & start plan','Finish setup','daysPerWeek','minutesPerSession'])assert.ok(shell.includes(token),token);
 });
