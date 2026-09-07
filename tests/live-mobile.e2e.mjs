@@ -76,6 +76,10 @@ for(const profile of profiles){
     await page.locator('#db41-shell.open').waitFor({state:'visible',timeout:10000});
     assert.equal(await page.locator('#db41-launch').count(),0,`${profile.name}: legacy app launcher must not exist in unified mode`);
     assert.equal(await page.locator('#db41-close:visible').count(),0,`${profile.name}: unified app must not expose a Close Workspace control`);
+    assert.equal(await page.locator('#db41-video-sheet').count(),1,`${profile.name}: unified video sheet missing`);
+    assert.equal(await page.locator('#db41-video-head').count(),1,`${profile.name}: unified video drag handle missing`);
+    assert.equal(await page.locator('#db41-video-min').count(),1,`${profile.name}: video minimize control missing`);
+    assert.equal(await page.locator('#db41-video-max').count(),1,`${profile.name}: video maximize control missing`);
     assert.equal(await page.locator('body.db41-unified-app').count(),1,`${profile.name}: unified app body state missing`);
     assert.equal(await page.locator('#db41-mobilebar:visible').count(),1,`${profile.name}: mobile app bar missing`);
     assert.equal(await page.locator('#db41-mobile-menu:visible').count(),1,`${profile.name}: mobile menu button missing`);

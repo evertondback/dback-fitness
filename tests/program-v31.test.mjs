@@ -281,7 +281,7 @@ test('v47.4 restores instructional videos inside the unified mobile app',async()
 test('v47.5 glass video window is draggable, resizable and mobile safe',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['db41-videoGrip','db41-videoTools','initVideoWindow','pointerdown','pointermove','db41_video_geometry','toggleVideoMin','toggleVideoMax','resetVideoWindow','ResizeObserver'])assert.ok(shell.includes(token),token);
- assert.match(shell,/APP41_VERSION='47\.5\.0'/);
+ assert.match(shell,/APP41_VERSION='47\.7\.0'/);
  assert.match(shell,/backdrop-filter:blur\(24px\)/);
  assert.match(shell,/resize:both/);
  assert.match(shell,/resize:none!important/);
@@ -294,3 +294,20 @@ test('v47.6 equipment library is searchable and category-filterable inside the u
  assert.match(shell,/libraryQuery/);
  assert.match(shell,/libraryCategory/);
 });
+
+test('v47.7 unified workout controls are operational and video window controls are real DOM elements',async()=>{
+ const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ assert.match(source,/startWorkout/);
+ assert.match(source,/\/api\/v31\/session\/start/);
+ assert.match(source,/\/api\/v31\/session\/log/);
+ assert.match(source,/data-set-log/);
+ assert.match(source,/Complete set/);
+ assert.match(source,/data-workout-action/);
+ assert.match(source,/id=\"db41-video-sheet\"/);
+ assert.match(source,/id=\"db41-video-head\"/);
+ assert.match(source,/id=\"db41-video-min\"/);
+ assert.match(source,/id=\"db41-video-max\"/);
+ assert.match(source,/window.addEventListener\('pointermove'/);
+ assert.match(source,/db41-workoutStatus/);
+});
+
