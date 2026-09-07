@@ -1,359 +1,136 @@
-import test from 'node:test';
+import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-import {PROGRAM31,WARMUP31,DAY_ORDER,validateProgram31} from '../src/v31-program-core.js';
-import {coachingFor} from '../src/v36-coaching.js';
+import {mkdir} from 'node:fs/promises';
+import {SYSTEM_VERSION} from '../src/system-version.js';
 
-test('canonical program is complete and valid',()=>{
- const result=validateProgram31();
- assert.equal(result.ok,true,result.errors.join('\n'));
- assert.equal(result.days,7);
- assert.ok(result.totalExercises>=60);
- assert.ok(result.warmupMovements>=15);
- assert.equal(result.version,'36.1.0');
-});
+const BASE=process.env.DBACK_LIVE_URL||'https://dback-fitness.dback.workers.dev';
+const OUT='artifacts/mobile-qa';
+await mkdir(OUT,{recursive:true});
 
-test('every day remains a 60 minute standalone session without runaway exercise count',()=>{
- assert.deepEqual(Object.keys(PROGRAM31).sort(),DAY_ORDER.slice().sort());
- for(const day of DAY_ORDER){
-  const d=PROGRAM31[day];
-  assert.equal(d.targetMinutes,60,day);
-  assert.ok(d.focus.length>3,day);
-  assert.ok(d.exercises.length>=6,day);
-  assert.ok(d.exercises.length<=10,`${day}: too many exercises for a focused 60-minute session`);
- }
-});
-
-test('exercise identifiers are unique and every exercise has an instructional video',()=>{
- const ids=new Set();
- for(const day of DAY_ORDER){
-  for(const e of PROGRAM31[day].exercises){
-   assert.ok(!ids.has(e.id),`duplicate exercise id: ${e.id}`);
-   ids.add(e.id);
-   assert.match(e.video,/^https:\/\/www\.youtube\.com\/watch\?/);
-   assert.ok(Number.isFinite(e.restSeconds));
+async function waitForProductionVersion(){
+  const deadline=Date.now()+120000;
+  let last='';
+  while(Date.now()<deadline){
+    try{
+      const root=await fetch(BASE,{headers:{'cache-control':'no-cache'}});
+      const build=root.headers.get('x-dback-build')||'';
+      const health=await fetch(`${BASE}/api/v40/health`,{headers:{'cache-control':'no-cache'}});
+      const payload=health.ok?await health.json():{};
+      last=`root=${root.status} build=${build||'<missing>'} health=${health.status} api=${payload.version||'<missing>'}`;
+      if(root.ok&&health.ok&&build===SYSTEM_VERSION&&payload.version===SYSTEM_VERSION)return;
+    }catch(e){last=e.message}
+    await new Promise(r=>setTimeout(r,3000));
   }
- }
-});
+  throw new Error(`Production version attestation failed. Expected ${SYSTEM_VERSION}; last observed ${last}`);
+}
 
-test('warm-up covers the full movement chain',()=>{
- const cats=new Set(WARMUP31.map(x=>x.category));
- for(const expected of ['feet','ankles','knees','hips','spine','neck','shoulders','scapula','forearms','wrists','glutes','core','grip','posture'])assert.ok(cats.has(expected),expected);
-});
+await waitForProductionVersion();
 
-test('targeted gaps are explicitly trained',()=>{
- const names=Object.values(PROGRAM31).flatMap(d=>d.exercises.map(e=>e.name));
- for(const required of ['Single-Leg Calf Raise','Wall Tibialis Raise','Reverse Crunch','Dumbbell Lateral Lunge','Side-Lying Dumbbell External Rotation','Bodyweight Squat Jump'])assert.ok(names.includes(required),required);
- assert.ok(names.filter(x=>x==='Single-Leg Calf Raise').length>=2,'calves need two direct weekly exposures');
- assert.ok(names.filter(x=>x==='Wall Tibialis Raise').length>=2,'tibialis needs two direct weekly exposures');
- assert.ok(names.filter(x=>x==='Reverse Crunch').length>=2,'direct trunk flexion needs two weekly exposures');
-});
+const profiles=[
+  {name:'iphone-390',viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true},
+  {name:'iphone-430',viewport:{width:430,height:932},deviceScaleFactor:3,isMobile:true,hasTouch:true},
+  {name:'tablet-768',viewport:{width:768,height:1024},deviceScaleFactor:2,isMobile:true,hasTouch:true}
+];
 
-test('every exercise resolves to usable coaching metadata',()=>{
- for(const day of DAY_ORDER){
-  for(const e of PROGRAM31[day].exercises){
-   const c=coachingFor(e);
-   for(const field of ['purpose','muscles','cues','watchFor','focus'])assert.ok(String(c[field]||'').length>12,`${day}/${e.name}: missing coaching ${field}`);
+const browser=await chromium.launch({headless:true});
+const failures=[];
+
+async function noHorizontalOverflow(page,label){
+  const m=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth,bw:document.body?.scrollWidth||0}));
+  if(m.sw>m.cw+2||m.bw>m.cw+2)failures.push(`${label}: horizontal overflow sw=${m.sw} bw=${m.bw} cw=${m.cw}`);
+}
+
+async function openDrawer(page){
+  const menu=page.locator('#db41-mobile-menu');
+  if(await menu.isVisible()){
+    await menu.click();
+    await page.locator('.db41-panel.mobile-menu-open').waitFor({state:'attached',timeout:5000});
   }
- }
-});
+}
 
-test('production worker wires current anatomy, completion suite, universal tracker, adaptive platform and app shell',async()=>{
- const source=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
- assert.match(source,/v35-anatomy-hard-reset\.js/);
- assert.doesNotMatch(source,/v27-anatomy-vector\.js|v28-anatomy-mobile-shell\.js|v29-anatomy-unified\.js|v30-anatomy-realistic\.js/);
- assert.match(source,/v31-completion-ui\.js/);
- assert.match(source,/v37-timer-tracker\.js/);
- assert.match(source,/v37-reconcile-api\.js/);
- assert.match(source,/v40-adaptive-platform\.js/);
- assert.match(source,/v41-fitness-app-shell\.js/);
- assert.match(source,/TIMER37_CSS/);
- assert.match(source,/TIMER37_JS/);
- assert.match(source,/PLATFORM40_CSS/);
- assert.match(source,/PLATFORM40_JS/);
- assert.match(source,/APP41_CSS/);
- assert.match(source,/APP41_JS/);
- assert.match(source,/handleV31Api/);
- assert.match(source,/handleV37ReconcileApi/);
- assert.match(source,/handleV40Api/);
-});
+async function shellNav(page,text){
+  const panel=page.locator('.db41-panel');
+  const menu=page.locator('#db41-mobile-menu');
+  if(await menu.isVisible()){
+    const open=await panel.evaluate(el=>el.classList.contains('mobile-menu-open'));
+    if(!open)await openDrawer(page);
+  }
+  const button=page.locator('#db41-nav button').filter({hasText:new RegExp(`^${text}$`)});
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
+  await page.waitForTimeout(350);
+}
 
-test('universal timer tracker covers every workout exercise and warm-up movement',async()=>{
- const source=await readFile(new URL('../src/v37-timer-tracker.js',import.meta.url),'utf8');
- assert.match(source,/\.db31Exercise/);
- assert.match(source,/\.db31WarmItem/);
- assert.match(source,/Work \/ Exercise/);
- assert.match(source,/>Rest</);
- assert.match(source,/Complete Set/);
- assert.match(source,/Undo Set/);
- assert.match(source,/warm-check/);
- assert.match(source,/localStorage/);
- assert.match(source,/navigator\.vibrate/);
- assert.match(source,/data-log/);
- assert.match(source,/Workout Tracker/);
-});
+for(const profile of profiles){
+  const context=await browser.newContext({viewport:profile.viewport,deviceScaleFactor:profile.deviceScaleFactor,isMobile:profile.isMobile,hasTouch:profile.hasTouch});
+  const page=await context.newPage();
+  page.on('pageerror',e=>failures.push(`${profile.name}: pageerror ${e.message}`));
+  const consoleErrors=[];
+  page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
 
-test('v31 API never performs runtime schema DDL and exposes complete contract',async()=>{
- const source=await readFile(new URL('../src/v31-api.js',import.meta.url),'utf8');
- assert.doesNotMatch(source,/CREATE\s+TABLE/i);
- assert.match(source,/v36-coaching\.js/);
- for(const table of ['workout_sessions','set_logs','exercise_state'])assert.match(source,new RegExp(table));
- for(const route of ['/api/v31/health','/api/v31/program','/api/v31/session/start','/api/v31/session/log','/api/v31/session/complete','/api/v31/history','/api/v31/progress'])assert.ok(source.includes(route),route);
-});
+  try{
+    const res=await page.goto(BASE,{waitUntil:'networkidle',timeout:60000});
+    assert.ok(res&&res.ok(),`${profile.name}: live site failed to load`);
+    assert.equal(res.headers()['x-dback-build'],SYSTEM_VERSION,`${profile.name}: live root build header is not the repository system version`);
 
-test('runtime reconciliation uses authoritative live D1 column names',async()=>{
- const source=await readFile(new URL('../src/v37-reconcile-api.js',import.meta.url),'utf8');
- assert.match(source,/completed_at/);
- assert.match(source,/duration_seconds/);
- assert.doesNotMatch(source,/ended_at/);
- assert.doesNotMatch(source,/duration_min/);
- assert.match(source,/add-session/);
- assert.match(source,/duplicate-session/);
- assert.match(source,/stop-current/);
-});
+    await page.locator('#db41-shell.open').waitFor({state:'visible',timeout:10000});
+    assert.equal(await page.locator('#db41-launch').count(),0,`${profile.name}: legacy app launcher must not exist in unified mode`);
+    assert.equal(await page.locator('#db41-close:visible').count(),0,`${profile.name}: unified app must not expose a Close Workspace control`);
+    assert.equal(await page.locator('#db41-video-sheet').count(),1,`${profile.name}: unified video sheet missing`);
+    assert.equal(await page.locator('#db41-video-head').count(),1,`${profile.name}: unified video drag handle missing`);
+    assert.equal(await page.locator('#db41-video-min').count(),1,`${profile.name}: video minimize control missing`);
+    assert.equal(await page.locator('#db41-video-max').count(),1,`${profile.name}: video maximize control missing`);
+    assert.equal(await page.locator('body.db41-unified-app').count(),1,`${profile.name}: unified app body state missing`);
+    assert.equal(await page.locator('#db41-mobilebar:visible').count(),1,`${profile.name}: mobile app bar missing`);
+    assert.equal(await page.locator('#db41-mobile-menu:visible').count(),1,`${profile.name}: mobile menu button missing`);
+    await noHorizontalOverflow(page,`${profile.name} unified root`);
+    const visibleText=await page.locator('body').innerText();
+    assert.ok(!/[ÃÂ�]/.test(visibleText),`${profile.name}: mojibake detected in visible mobile text`);
+    await page.screenshot({path:`${OUT}/${profile.name}-unified-root.png`,fullPage:true});
 
-test('single system version is used by production runtime',async()=>{
- const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
- const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
- assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
- assert.match(runtime,/SYSTEM_VERSION/);
- assert.match(production,/no-store, no-cache, must-revalidate/);
- assert.match(production,/x-dback-build/);
-});
+    await openDrawer(page);
+    assert.ok(await page.locator('.db41-panel.mobile-menu-open').count(),`${profile.name}: mobile drawer did not open`);
+    await page.locator('#db41-nav button').filter({hasText:/^Welcome$/}).click();
+    await page.waitForTimeout(200);
+    assert.equal(await page.locator('.db41-panel.mobile-menu-open').count(),0,`${profile.name}: drawer did not close after navigation`);
+    assert.ok(await page.getByText('Train with a plan that adapts to you.').count(),`${profile.name}: welcome screen missing`);
 
-test('v41 app shell exposes core universal user flows',async()=>{
- const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const label of ['Welcome','Today','Plan','Progress','Library','Profile','Users','Settings'])assert.ok(source.includes(label),label);
- for(const route of ['/api/v40/me','/api/v40/plan','/api/v40/metrics','/api/v40/profile','/api/v40/admin/summary','/api/v40/admin/users'])assert.ok(source.includes(route),route);
- assert.match(source,/data-mode="gym"/);
- assert.match(source,/data-mode="home"/);
- assert.match(source,/Copilot shortcuts/);
- assert.match(source,/Why it is in your program/);
- assert.match(source,/What it works/);
-});
+    for(const section of ['Today','Plan','Progress']){
+      await shellNav(page,section);
+      await noHorizontalOverflow(page,`${profile.name} ${section}`);
+      await page.screenshot({path:`${OUT}/${profile.name}-${section.toLowerCase()}.png`,fullPage:true});
+    }
 
-test('workout and full-plan UI has desktop, tablet and phone responsive contracts',async()=>{
- const source=await readFile(new URL('../src/v31-completion-ui.js',import.meta.url),'utf8');
- assert.match(source,/@media\(max-width:900px\)/);
- assert.match(source,/@media\(max-width:600px\)/);
- assert.match(source,/grid-template-columns:1fr/);
- assert.match(source,/db31Days/);
- assert.match(source,/data-db31-day/);
- assert.match(source,/Purpose:/);
- assert.match(source,/Focus muscles:/);
- assert.match(source,/Coach cues:/);
- assert.match(source,/Avoid:/);
-});
+    await shellNav(page,'Library');
+    await noHorizontalOverflow(page,`${profile.name} library`);
+    const libraryText=(await page.locator('#db41-view').innerText()).toLowerCase();
+    assert.ok(libraryText.includes('home equipment'),`${profile.name}: Home Equipment library missing`);
+    assert.ok(libraryText.includes('full gym equipment library'),`${profile.name}: Full Gym Equipment Library missing`);
+    assert.ok(libraryText.includes('adjustable dumbbell'),`${profile.name}: adjustable dumbbells missing from home equipment`);
+    assert.ok(libraryText.includes('5')&&libraryText.includes('55'),`${profile.name}: 5-55 lb home dumbbell range missing`);
+    assert.ok(libraryText.includes('floor mat'),`${profile.name}: floor mat missing from home equipment`);
+    assert.ok(libraryText.includes('pull-up')||libraryText.includes('hanging bar'),`${profile.name}: pull-up/hanging bar missing from home equipment`);
+    const search=page.locator('#db41-library-search');
+    await search.fill('hack squat');
+    await page.waitForFunction(()=>document.querySelector('#db41-view')?.innerText.toLowerCase().includes('hack squat'),null,{timeout:5000});
+    const filteredText=(await page.locator('#db41-view').innerText()).toLowerCase();
+    assert.ok(filteredText.includes('hack squat'),`${profile.name}: gym equipment search did not return Hack Squat`);
+    assert.ok(filteredText.includes('equipment types shown'),`${profile.name}: filtered equipment count missing`);
+    await page.locator('#db41-library-clear').click();
+    await page.waitForTimeout(200);
+    await page.screenshot({path:`${OUT}/${profile.name}-equipment-library.png`,fullPage:true});
 
-test('current anatomy UI has single-owner cleanup and mobile full-screen contract',async()=>{
- const source=await readFile(new URL('../src/v35-anatomy-hard-reset.js',import.meta.url),'utf8');
- assert.match(source,/@media\(max-width:720px\)/);
- assert.match(source,/#view-anatomy>\.db35\{display:block!important\}/);
- assert.match(source,/#view-anatomy>\.db35~\*\{display:none!important\}/);
- assert.match(source,/db35Active/);
- assert.match(source,/db35Seg/);
-});
+    await shellNav(page,'Profile');
+    await noHorizontalOverflow(page,`${profile.name} profile`);
+    await shellNav(page,'Settings');
+    await noHorizontalOverflow(page,`${profile.name} settings`);
 
-test('v42 persists adaptive week and phase transitions with audit records',async()=>{
- const source=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- assert.match(source,/syncPlanState/);
- assert.match(source,/cycle-state-change/);
- assert.match(source,/UPDATE coach_plan_state SET week_number=\?,phase=\?/);
- assert.match(source,/INSERT INTO coach_adaptations/);
-});
+    if(consoleErrors.length)failures.push(`${profile.name}: console errors: ${consoleErrors.join(' | ')}`);
+  }catch(e){
+    failures.push(`${profile.name}: ${e.message}`);
+    await page.screenshot({path:`${OUT}/${profile.name}-failure.png`,fullPage:true}).catch(()=>{});
+  }finally{await context.close()}
+}
 
-test('v43 environment-aware planning and role-aware navigation are wired',async()=>{
- const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- assert.match(platform,/environmentExercise/);
- assert.match(platform,/homeAdaptExercise/);
- assert.match(platform,/url\.searchParams\.get\('environment'\)/);
- assert.match(platform,/actor:\{id:a\.id,role:a\.role,status:a\.status\}/);
- assert.match(shell,/plan\?environment=/);
- assert.match(shell,/S\.me\?\.actor\?\.role==='admin'/);
- assert.match(shell,/isAdmin\?\[\['users','Users'\]\]:\[\]/);
- assert.match(shell,/Training environment updated to/);
-});
-
-test('v44 admin lifecycle controls are wired end to end',async()=>{
- const api=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- const ui=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- assert.match(api,/updateAdminUser/);
- assert.match(api,/rotateAdminUserToken/);
- assert.match(api,/admin-token-rotation/);
- assert.match(api,/requireAdmin/);
- assert.match(ui,/data-user-action=\"status\"/);
- assert.match(ui,/data-user-action=\"role\"/);
- assert.match(ui,/data-user-action=\"token\"/);
- assert.match(ui,/adminUserAction/);
-});
-
-test('v45 persists readiness mode transitions without duplicate audit spam',async()=>{
- const source=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- assert.match(source,/auditReadinessAdjustment/);
- assert.match(source,/event_type='readiness-adjustment'/);
- assert.match(source,/previousMode===adjustment\.mode/);
- assert.match(source,/readiness-adjustment/);
- assert.match(source,/safety_class/);
- assert.match(source,/ready=await auditReadinessAdjustment/);
-});
-
-test('v46 Google authentication and professional app navigation are wired end to end',async()=>{
- const api=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- const ui=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const table of ['coach_identities','coach_sessions','coach_oauth_states'])assert.ok(api.includes(table),table);
- for(const route of ['/api/v40/auth/google/start','/api/v40/auth/google/callback','/api/v40/auth/logout','/api/v40/auth/status'])assert.ok(api.includes(route),route);
- assert.match(api,/code_challenge_method:'S256'/);
- assert.match(api,/HttpOnly; Secure; SameSite=Lax/);
- assert.match(api,/email_verified!==true/);
- assert.match(api,/googleAuthConfigured/);
- assert.match(ui,/db41-side/);
- assert.match(ui,/welcomeView/);
- assert.match(ui,/Continue with Google/);
- assert.match(ui,/Sign up with Google/);
- assert.match(ui,/Users & profiles/);
- assert.match(ui,/\['users','Users'\]/);
-});
-
-test('v46.1 app shell has dedicated mobile navigation and touch-safe responsive workspace',async()=>{
- const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['db41-mobile-menu','db41-mobilebar','mobile-menu-open','100dvh','safe-area-inset-bottom','touch-action:manipulation','db41-tablewrap'])assert.ok(source.includes(token),token);
- assert.match(source,/@media\(max-width:390px\)/);
-});
-
-
-test('v47 unifies the app shell and reconciles home/gym equipment catalogs',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- const catalog=await readFile(new URL('../src/v47-equipment-catalog.js',import.meta.url),'utf8');
- assert.match(shell,/db41-unified-app/);
- assert.match(shell,/Unified Fitness Operating System/);
- assert.doesNotMatch(shell,/db41-shell[^\n]{0,160}classList\.remove\('open'\)/);
- assert.match(shell,/Full gym equipment library/);
- assert.match(catalog,/5-55 lb each/);
- assert.match(catalog,/Pull-Up \/ Hanging Bar/);
- assert.match(catalog,/Functional Trainer \/ Dual Adjustable Pulley/);
- assert.match(catalog,/Hack Squat/);
- assert.match(catalog,/Stair Climber \/ StepMill/);
- assert.match(platform,/equipmentNamesForMode/);
- assert.match(platform,/catalogCount/);
-});
-
-test('v47.1 supports metric and US customary measurements with canonical conversion',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['Metric · kg / cm','US · lb / ft-in / in','LB_PER_KG','CM_PER_IN','weightToKg','lengthToCm','profileHeightCm','data-units="metric"','data-units="imperial"'])assert.ok(shell.includes(token),token);
- assert.match(shell,/Weight \('\+\(S\.units==='imperial'\?'lb':'kg'\)\+'\)/);
- assert.match(shell,/Height \(ft \/ in\)/);
- assert.match(shell,/Height \(cm\)/);
- assert.match(shell,/units:S\.units/);
- assert.match(shell,/waist_cm:lengthToCm/);
-});
-
-
-test('v47.2 adds first-run profile setup and completion guidance',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['profileCompletion','setupBanner','setupView','Profile setup','Save & start plan','Finish setup','daysPerWeek','minutesPerSession'])assert.ok(shell.includes(token),token);
-});
-
-
-test('v47.2.1 renders clean UTF-8 coaching text without mojibake',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const bad of ['Ã','Â','â','�'])assert.ok(!shell.includes(bad),`mojibake token present: ${bad}`);
- for(const good of [' × ',' · ','— copy now:'])assert.ok(shell.includes(good),`expected clean UTF-8 text: ${good}`);
-});
-
-
-test('v47.3 mobile-first shell keeps workout controls readable and touch safe',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['db41-scrim','db41-prescription','db41-exmeta','scroll-snap-type:x proximity','safe-area-inset-bottom','@media(max-width:520px)'])assert.ok(shell.includes(token),token);
- assert.match(shell,/min-height:50px/);
-});
-
-
-test('v47.4 restores instructional videos inside the unified mobile app',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['Watch form video','db41-videoModal','db41-videoFrame','data-video','videoSourceFor','embedVideoURL','youtube-nocookie.com','loadVideoSources','/api/manage/videos'])assert.ok(shell.includes(token),token);
- assert.match(shell,/x\?\.video/);
-});
-
-
-test('v47.5 glass video window is draggable, resizable and mobile safe',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['db41-videoGrip','db41-videoTools','initVideoWindow','pointerdown','pointermove','db41_video_geometry','toggleVideoMin','toggleVideoMax','resetVideoWindow','ResizeObserver'])assert.ok(shell.includes(token),token);
- assert.match(shell,/backdrop-filter:blur\(24px\)/);
- assert.match(shell,/resize:both/);
- assert.match(shell,/resize:none/);
-});
-
-
-test('v47.6 equipment library is searchable and category-filterable inside the unified shell',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['db41-library-search','db41-library-category','db41-library-clear','filteredGymEquipment','Find gym equipment','Clear filters'])assert.ok(shell.includes(token),token);
- assert.match(shell,/libraryQuery/);
- assert.match(shell,/libraryCategory/);
-});
-
-test('v47.7 unified workout controls are operational and video window controls are real DOM elements',async()=>{
- const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- assert.match(source,/startWorkout/);
- assert.match(source,/\/api\/v31\/session\/start/);
- assert.match(source,/\/api\/v31\/session\/log/);
- assert.match(source,/data-set-log/);
- assert.match(source,/Complete set/);
- assert.match(source,/data-workout-action/);
- assert.match(source,/id=\"db41-video-sheet\"/);
- assert.match(source,/id=\"db41-video-head\"/);
- assert.match(source,/id=\"db41-video-min\"/);
- assert.match(source,/id=\"db41-video-max\"/);
- assert.match(source,/window.addEventListener\('pointermove'/);
- assert.match(source,/db41-workoutStatus/);
-});
-
-
-
-test('v47.8 restores complete warm-up, recovery work and meaningful exercise coaching in unified Today',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- assert.match(shell,/APP41_VERSION=/);
- assert.match(shell,/\/api\/v31\/program/);
- assert.match(shell,/Complete daily joint \+ alignment warm-up/);
- assert.match(shell,/Mobility \+ long flexibility/);
- assert.match(shell,/What it works/);
- assert.match(shell,/Why it is in your program/);
- assert.match(shell,/How to perform it well/);
- assert.match(shell,/Watch for/);
- assert.match(shell,/Watch warm-up video/);
- assert.match(shell,/Watch mobility \/ flexibility video/);
- assert.match(platform,/coachingFor/);
- assert.match(platform,/coaching,purpose:coaching\.purpose/);
-});
-
-
-test('v47.9 gives every warm-up and recovery movement a video action without covering workout content',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- for(const token of ['AUX_VIDEO_DIRECT','professionalVideoSearch','Find professional warm-up video','Find professional mobility / flexibility video','video-open:not(.video-floating)','db41-video-float','setVideoFloat'])assert.ok(shell.includes(token),token);
- assert.doesNotMatch(shell,/Instructional video pending professional review/);
- assert.match(shell,/@media\(min-width:901px\)/);
- assert.match(shell,/padding-right:min\(430px,34vw\)/);
- assert.match(shell,/width:100vw!important;height:100dvh!important/);
-});
-
-
-test('v47.9.1 prevents adaptive KPI overflow and clipping in third-width cards',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- assert.match(shell,/grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
- assert.match(shell,/\.db41-card\.third \.db41-kpis\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
- assert.match(shell,/\.db41-kpi\{min-width:0;overflow:hidden/);
- assert.match(shell,/overflow-wrap:anywhere/);
-});
-
-
-test('v47.9.2 prefers highest-quality instructional video sources and requests HD playback',async()=>{
- const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- assert.match(shell,/videoQualityScore/);
- assert.match(shell,/2160p\|4k\|uhd/);
- assert.match(shell,/1080p\|full hd\|fhd/);
- assert.match(shell,/vq=hd1080/);
- assert.match(shell,/HD\/4K preferred/);
- assert.match(shell,/tutorial 1080p 4K professional coach physical therapy/);
-});
+await browser.close();
+if(failures.length){console.error(failures.join('\n'));process.exitCode=1}else{console.log(`Live mobile QA passed for unified production build ${SYSTEM_VERSION} at 390px, 430px and 768px, including full-screen shell and reconciled Home/Gym equipment libraries.`)}

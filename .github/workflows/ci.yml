@@ -1,5 +1,9 @@
 name: DBACK Fitness CI
 
+concurrency:
+  group: dback-fitness-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
