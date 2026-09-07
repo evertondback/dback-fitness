@@ -59,17 +59,24 @@ test('every exercise resolves to usable coaching metadata',()=>{
  }
 });
 
-test('production worker wires current anatomy, completion suite, universal tracker and reconciler',async()=>{
+test('production worker wires current anatomy, completion suite, universal tracker, adaptive platform and app shell',async()=>{
  const source=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(source,/v35-anatomy-hard-reset\.js/);
  assert.doesNotMatch(source,/v27-anatomy-vector\.js|v28-anatomy-mobile-shell\.js|v29-anatomy-unified\.js|v30-anatomy-realistic\.js/);
  assert.match(source,/v31-completion-ui\.js/);
  assert.match(source,/v37-timer-tracker\.js/);
  assert.match(source,/v37-reconcile-api\.js/);
+ assert.match(source,/v40-adaptive-platform\.js/);
+ assert.match(source,/v41-fitness-app-shell\.js/);
  assert.match(source,/TIMER37_CSS/);
  assert.match(source,/TIMER37_JS/);
+ assert.match(source,/PLATFORM40_CSS/);
+ assert.match(source,/PLATFORM40_JS/);
+ assert.match(source,/APP41_CSS/);
+ assert.match(source,/APP41_JS/);
  assert.match(source,/handleV31Api/);
  assert.match(source,/handleV37ReconcileApi/);
+ assert.match(source,/handleV40Api/);
 });
 
 test('universal timer tracker covers every workout exercise and warm-up movement',async()=>{
@@ -107,13 +114,23 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'37.0.0');
+ assert.equal(SYSTEM_VERSION,'41.0.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
  assert.match(runtime,/SYSTEM_VERSION/);
  assert.match(production,/no-store, no-cache, must-revalidate/);
  assert.match(production,/x-dback-build/);
+});
+
+test('v41 app shell exposes core universal user flows',async()=>{
+ const source=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const label of ['Today','Plan','Progress','Library','Profile','Admin','Settings'])assert.ok(source.includes(label),label);
+ for(const route of ['/api/v40/me','/api/v40/plan','/api/v40/metrics','/api/v40/profile','/api/v40/admin/summary','/api/v40/admin/users'])assert.ok(source.includes(route),route);
+ assert.match(source,/data-mode=\\"gym\\"/);
+ assert.match(source,/data-mode=\\"home\\"/);
+ assert.match(source,/Coach Copilot/);
+ assert.match(source,/Purpose:/);
 });
 
 test('workout and full-plan UI has desktop, tablet and phone responsive contracts',async()=>{
