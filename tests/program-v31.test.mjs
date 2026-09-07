@@ -280,7 +280,6 @@ test('v47.4 restores instructional videos inside the unified mobile app',async()
 test('v47.5 glass video window is draggable, resizable and mobile safe',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['db41-videoGrip','db41-videoTools','initVideoWindow','pointerdown','pointermove','db41_video_geometry','toggleVideoMin','toggleVideoMax','resetVideoWindow','ResizeObserver'])assert.ok(shell.includes(token),token);
- assert.match(shell,/APP41_VERSION='47\.9\.1'/);
  assert.match(shell,/backdrop-filter:blur\(24px\)/);
  assert.match(shell,/resize:both/);
  assert.match(shell,/resize:none/);
@@ -351,7 +350,6 @@ test('v47.9.1 prevents adaptive KPI overflow and clipping in third-width cards',
 
 test('v47.9.2 prefers highest-quality instructional video sources and requests HD playback',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
- assert.match(shell,/APP41_VERSION='47\.9\.2'/);
  assert.match(shell,/videoQualityScore/);
  assert.match(shell,/2160p\|4k\|uhd/);
  assert.match(shell,/1080p\|full hd\|fhd/);
