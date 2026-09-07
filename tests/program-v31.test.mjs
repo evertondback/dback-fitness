@@ -317,7 +317,7 @@ test('v47.7 unified workout controls are operational and video window controls a
 test('v47.8 restores complete warm-up, recovery work and meaningful exercise coaching in unified Today',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
- assert.match(shell,/47\.9\.0/);
+ assert.match(shell,/47\.9\.1/);
  assert.match(shell,/\/api\/v31\/program/);
  assert.match(shell,/Complete daily joint \+ alignment warm-up/);
  assert.match(shell,/Mobility \+ long flexibility/);
