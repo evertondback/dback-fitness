@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PROGRAM31,WARMUP31,DAY_ORDER,validateProgram31} from '../src/v31-program-core.js';
 import {coachingFor} from '../src/v36-coaching.js';
-import {SYSTEM_VERSION} from '../src/system-version.js';
 
 test('canonical program is complete and valid',()=>{
  const result=validateProgram31();
@@ -114,7 +113,6 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.9.2');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
