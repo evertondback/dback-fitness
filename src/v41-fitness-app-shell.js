@@ -1,7 +1,7 @@
 import {HOME_EQUIPMENT_CATALOG,GYM_EQUIPMENT_CATALOG} from './v47-equipment-catalog.js';
 const HOME_EQUIPMENT_JSON=JSON.stringify(HOME_EQUIPMENT_CATALOG);
 const GYM_EQUIPMENT_JSON=JSON.stringify(GYM_EQUIPMENT_CATALOG);
-export const APP41_VERSION='47.9.7';
+export const APP41_VERSION='47.9.8';
 
 export const APP41_CSS=`
 :root{-webkit-text-size-adjust:100%;text-size-adjust:100%;--db41-bg:#f6f8fb;--db41-card:#fff;--db41-text:#152033;--db41-muted:#617086;--db41-line:#dce4ee;--db41-accent:#0b66c3;--db41-good:#176b45;--db41-warn:#8a5a00;--db41-danger:#9d2525;--db41-shadow:0 12px 34px rgba(25,44,71,.12)}

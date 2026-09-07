@@ -44,7 +44,7 @@ const PURPOSE_BY_CATEGORY={
 async function sha256(value){const bytes=new TextEncoder().encode(value);const hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function makeToken(){const a=new Uint8Array(32);crypto.getRandomValues(a);return [...a].map(x=>x.toString(16).padStart(2,'0')).join('')}
 
-async function ensureSchema(env){
+export async function ensureCoachSchema(env){
  const db=ensureDb(env);
  const statements=[
   `CREATE TABLE IF NOT EXISTS coach_users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,display_name TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'user',status TEXT NOT NULL DEFAULT 'active',api_token_hash TEXT,sex TEXT,birth_date TEXT,height_cm REAL,weight_kg REAL,timezone TEXT DEFAULT 'America/New_York',units TEXT DEFAULT 'imperial',experience_level TEXT DEFAULT 'intermediate',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
@@ -55,7 +55,10 @@ async function ensureSchema(env){
   `CREATE TABLE IF NOT EXISTS coach_admin_settings(setting_key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_by TEXT NOT NULL,updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS coach_identities(provider TEXT NOT NULL,provider_subject TEXT NOT NULL,user_id TEXT NOT NULL,email TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,PRIMARY KEY(provider,provider_subject))`,
   `CREATE TABLE IF NOT EXISTS coach_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,last_seen_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS coach_oauth_states(state_hash TEXT PRIMARY KEY,code_verifier TEXT NOT NULL,created_at TEXT NOT NULL,return_to TEXT NOT NULL DEFAULT '/',intent TEXT NOT NULL DEFAULT 'login')`
+  `CREATE TABLE IF NOT EXISTS coach_oauth_states(state_hash TEXT PRIMARY KEY,code_verifier TEXT NOT NULL,created_at TEXT NOT NULL,return_to TEXT NOT NULL DEFAULT '/',intent TEXT NOT NULL DEFAULT 'login')`,
+  `CREATE TABLE IF NOT EXISTS coach_workout_sessions(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,workout_date TEXT NOT NULL,day_name TEXT NOT NULL,started_at TEXT NOT NULL,completed_at TEXT,duration_min INTEGER,readiness REAL,sleep_hours REAL,bodyweight_lb REAL,session_rpe REAL,notes TEXT,status TEXT NOT NULL DEFAULT 'active')`,
+  `CREATE TABLE IF NOT EXISTS coach_set_logs(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,session_id TEXT NOT NULL,exercise_id TEXT NOT NULL,set_number INTEGER NOT NULL,weight_lb REAL,reps INTEGER,seconds INTEGER,distance_ft REAL,rir REAL,rpe REAL,discomfort REAL,completed_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS coach_exercise_state(user_id TEXT NOT NULL,exercise_id TEXT NOT NULL,last_weight_lb REAL,last_reps INTEGER,last_seconds INTEGER,last_rir REAL,best_weight_lb REAL,best_reps INTEGER,best_seconds INTEGER,next_weight_lb REAL,next_reps_target INTEGER,updated_at TEXT NOT NULL,PRIMARY KEY(user_id,exercise_id))`
  ];
  for(const s of statements)await db.prepare(s).run();
 }
@@ -63,12 +66,12 @@ async function ensureSchema(env){
 function bearer(req){const h=req.headers.get('authorization')||'';return h.startsWith('Bearer ')?h.slice(7).trim():''}
 function cookieValue(req,name){const raw=req.headers.get('cookie')||'';for(const part of raw.split(';')){const [k,...rest]=part.trim().split('=');if(k===name)return decodeURIComponent(rest.join('='))}return ''}
 async function sessionActor(req,env){const raw=cookieValue(req,'db_session');if(!raw)return null;const hash=await sha256(raw),ts=now();const user=await ensureDb(env).prepare("SELECT u.* FROM coach_sessions s JOIN coach_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active'").bind(hash,ts).first();if(user)await ensureDb(env).prepare('UPDATE coach_sessions SET last_seen_at=? WHERE token_hash=?').bind(ts,hash).run();return user}
-async function actor(req,env){
+export async function authenticatedActor(req,env){
  const token=bearer(req);
  if(token){if(env.DBACK_ADMIN_TOKEN&&token===env.DBACK_ADMIN_TOKEN)return {id:'admin',email:'admin',display_name:'Administrator',role:'admin',status:'active'};const hash=await sha256(token);const user=await ensureDb(env).prepare("SELECT * FROM coach_users WHERE api_token_hash=? AND status='active'").bind(hash).first();if(user)return user}
  return sessionActor(req,env);
 }
-async function requireAdmin(req,env){const a=await actor(req,env);return a?.role==='admin'?a:null}
+async function requireAdmin(req,env){const a=await authenticatedActor(req,env);return a?.role==='admin'?a:null}
 function googleConfigured(env){return Boolean(env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET)}
 function safeReturnTo(value){const v=String(value||'/');return v.startsWith('/')&&!v.startsWith('//')?v:'/'}
 async function sha256Base64Url(value){const bytes=new TextEncoder().encode(value),hash=await crypto.subtle.digest('SHA-256',bytes);let s='';for(const b of new Uint8Array(hash))s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
@@ -231,20 +234,20 @@ async function adminSummary(env){const db=ensureDb(env),users=await db.prepare("
 
 export async function handleV40Api(req,env,url){
  if(!url.pathname.startsWith('/api/v40/'))return null;
- await ensureSchema(env);
+ await ensureCoachSchema(env);
  if(url.pathname==='/api/v40/health'&&req.method==='GET')return json({ok:true,version:PLATFORM40_VERSION,d1:Boolean(env.DB),adminAuthConfigured:Boolean(env.DBACK_ADMIN_TOKEN),googleAuthConfigured:googleConfigured(env)});
  if(url.pathname==='/api/v40/manifest'&&req.method==='GET')return json({version:PLATFORM40_VERSION,architecture:'multi-user adaptive coaching platform',roles:['admin','user'],authentication:['google-oauth-pkce','secure-session-cookie','bearer-token-fallback'],cycleWeeks:12,phases:PHASES.map(x=>({name:x.name,weeks:x.weeks,intent:x.intent})),dayPurpose:DAY_PURPOSE});
  if(url.pathname==='/api/v40/auth/google/start'&&req.method==='GET')return googleAuthStart(req,env,url);
  if(url.pathname==='/api/v40/auth/google/callback'&&req.method==='GET')return googleAuthCallback(req,env,url);
  if(url.pathname==='/api/v40/auth/logout'&&(req.method==='GET'||req.method==='POST'))return authLogout(req,env,url);
- if(url.pathname==='/api/v40/auth/status'&&req.method==='GET'){const current=await actor(req,env);return json({ok:true,googleAuthConfigured:googleConfigured(env),authenticated:Boolean(current),user:current?{id:current.id,email:current.email,display_name:current.display_name,role:current.role,status:current.status}:null})}
+ if(url.pathname==='/api/v40/auth/status'&&req.method==='GET'){const current=await authenticatedActor(req,env);return json({ok:true,googleAuthConfigured:googleConfigured(env),authenticated:Boolean(current),user:current?{id:current.id,email:current.email,display_name:current.display_name,role:current.role,status:current.status}:null})}
  if(url.pathname==='/api/v40/admin/summary'&&req.method==='GET'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return adminSummary(env)}
  if(url.pathname==='/api/v40/admin/users'&&req.method==='POST'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return createUser(req,env)}
  const adminUserToken=url.pathname.match(/^\/api\/v40\/admin\/users\/([^/]+)\/token$/);
  if(adminUserToken&&req.method==='POST'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return rotateAdminUserToken(env,a,decodeURIComponent(adminUserToken[1]))}
  const adminUser=url.pathname.match(/^\/api\/v40\/admin\/users\/([^/]+)$/);
  if(adminUser&&req.method==='PATCH'){const a=await requireAdmin(req,env);if(!a)return json({error:'Admin authorization required.'},401);return updateAdminUser(req,env,a,decodeURIComponent(adminUser[1]))}
- const a=await actor(req,env);if(!a)return json({error:'Authorization required.'},401);
+ const a=await authenticatedActor(req,env);if(!a)return json({error:'Authorization required.'},401);
  if(url.pathname==='/api/v40/me'&&req.method==='GET')return json({ok:true,actor:{id:a.id,role:a.role,status:a.status},...await getProfile(env,a.id),latestMetrics:await latestMetrics(env,a.id)});
  if(url.pathname==='/api/v40/profile'&&req.method==='PUT')return updateProfile(req,env,a);
  if(url.pathname==='/api/v40/metrics'&&req.method==='POST')return addMetric(req,env,a);

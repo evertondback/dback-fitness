@@ -101,7 +101,7 @@ test('v31 API never performs runtime schema DDL and exposes complete contract',a
  const source=await readFile(new URL('../src/v31-api.js',import.meta.url),'utf8');
  assert.doesNotMatch(source,/CREATE\s+TABLE/i);
  assert.match(source,/v36-coaching\.js/);
- for(const table of ['workout_sessions','set_logs','exercise_state'])assert.match(source,new RegExp(table));
+ for(const table of ['coach_workout_sessions','coach_set_logs','coach_exercise_state'])assert.match(source,new RegExp(table));
  for(const route of ['/api/v31/health','/api/v31/program','/api/v31/session/start','/api/v31/session/log','/api/v31/session/complete','/api/v31/history','/api/v31/progress'])assert.ok(source.includes(route),route);
 });
 
@@ -374,4 +374,18 @@ test('v47.9.6 desktop workout uses the available workspace without breaking mobi
  assert.match(shell,/max-width:1440px/);
  assert.match(shell,/db41-today-grid/);
  assert.match(shell,/@media\(min-width:1100px\)/);
+});
+
+
+test('v47.9.8 scopes workout persistence, history and progress to the authenticated user',async()=>{
+ const api=await readFile(new URL('../src/v31-api.js',import.meta.url),'utf8');
+ const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ for(const table of ['coach_workout_sessions','coach_set_logs','coach_exercise_state'])assert.ok(api.includes(table)&&platform.includes(table),table);
+ assert.match(api,/authenticatedActor/);
+ assert.match(api,/Authentication required/);
+ assert.match(api,/WHERE user_id=\?/);
+ assert.match(api,/WHERE id=\? AND user_id=\?/);
+ assert.doesNotMatch(api,/FROM workout_sessions/);
+ assert.doesNotMatch(api,/FROM set_logs/);
+ assert.doesNotMatch(api,/FROM exercise_state/);
 });
