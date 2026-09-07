@@ -163,7 +163,6 @@ test('v42 persists adaptive week and phase transitions with audit records',async
  assert.match(source,/INSERT INTO coach_adaptations/);
 });
 
-
 test('v43 environment-aware planning and role-aware navigation are wired',async()=>{
  const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
@@ -177,15 +176,13 @@ test('v43 environment-aware planning and role-aware navigation are wired',async(
  assert.match(shell,/Training environment updated to/);
 });
 
-
 test('v44 admin lifecycle controls are wired end to end',async()=>{
  const api=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
  const ui=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  assert.match(api,/updateAdminUser/);
  assert.match(api,/rotateAdminUserToken/);
  assert.match(api,/admin-token-rotation/);
- assert.ok(api.includes("/api/v40/admin/users/"));
- assert.ok(api.includes("/token"));
+ assert.match(api,/requireAdmin/);
  assert.match(ui,/data-user-action=\"status\"/);
  assert.match(ui,/data-user-action=\"role\"/);
  assert.match(ui,/data-user-action=\"token\"/);
