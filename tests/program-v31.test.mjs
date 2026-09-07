@@ -130,7 +130,8 @@ test('v41 app shell exposes core universal user flows',async()=>{
  assert.match(source,/data-mode="gym"/);
  assert.match(source,/data-mode="home"/);
  assert.match(source,/Copilot shortcuts/);
- assert.match(source,/Purpose:/);
+ assert.match(source,/Why it is in your program/);
+ assert.match(source,/What it works/);
 });
 
 test('workout and full-plan UI has desktop, tablet and phone responsive contracts',async()=>{
@@ -140,7 +141,8 @@ test('workout and full-plan UI has desktop, tablet and phone responsive contract
  assert.match(source,/grid-template-columns:1fr/);
  assert.match(source,/db31Days/);
  assert.match(source,/data-db31-day/);
- assert.match(source,/Purpose:/);
+ assert.match(source,/Why it is in your program/);
+ assert.match(source,/What it works/);
  assert.match(source,/Focus muscles:/);
  assert.match(source,/Coach cues:/);
  assert.match(source,/Avoid:/);
@@ -281,7 +283,7 @@ test('v47.4 restores instructional videos inside the unified mobile app',async()
 test('v47.5 glass video window is draggable, resizable and mobile safe',async()=>{
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['db41-videoGrip','db41-videoTools','initVideoWindow','pointerdown','pointermove','db41_video_geometry','toggleVideoMin','toggleVideoMax','resetVideoWindow','ResizeObserver'])assert.ok(shell.includes(token),token);
- assert.match(shell,/APP41_VERSION='47\.7\.0'/);
+ assert.match(shell,/APP41_VERSION='47\.8\.0'/);
  assert.match(shell,/backdrop-filter:blur\(24px\)/);
  assert.match(shell,/resize:both/);
  assert.match(shell,/resize:none/);
