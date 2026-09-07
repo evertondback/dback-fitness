@@ -82,6 +82,7 @@ for(const profile of profiles){
     await noHorizontalOverflow(page,`${profile.name} unified root`);
     const visibleText=await page.locator('body').innerText();
     assert.ok(!/[ÃÂ�]/.test(visibleText),`${profile.name}: mojibake detected in visible mobile text`);
+    if(profile.name!=='tablet-768'){assert.ok(await page.locator('.db41-exmeta').count()>=1,`${profile.name}: mobile metadata grid missing`);}
     await page.screenshot({path:`${OUT}/${profile.name}-unified-root.png`,fullPage:true});
 
     await openDrawer(page);
