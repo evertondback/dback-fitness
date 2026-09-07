@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.4.0');
+ assert.equal(SYSTEM_VERSION,'47.5.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -275,4 +275,14 @@ test('v47.4 restores instructional videos inside the unified mobile app',async()
  const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
  for(const token of ['Watch form video','db41-videoModal','db41-videoFrame','data-video','videoSourceFor','embedVideoURL','youtube-nocookie.com','loadVideoSources','/api/manage/videos'])assert.ok(shell.includes(token),token);
  assert.match(shell,/x\?\.video/);
+});
+
+
+test('v47.5 glass video window is draggable, resizable and mobile safe',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const token of ['db41-videoGrip','db41-videoTools','initVideoWindow','pointerdown','pointermove','db41_video_geometry','toggleVideoMin','toggleVideoMax','resetVideoWindow','ResizeObserver'])assert.ok(shell.includes(token),token);
+ assert.match(shell,/APP41_VERSION='47\.5\.0'/);
+ assert.match(shell,/backdrop-filter:blur\(24px\)/);
+ assert.match(shell,/resize:both/);
+ assert.match(shell,/resize:none!important/);
 });
