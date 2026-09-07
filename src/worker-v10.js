@@ -11,6 +11,7 @@ import {LIBRARY_INDEX_CSS,LIBRARY_INDEX_JS} from './v14-library-index.js';
 import {VIDEO_SOURCE_CSS,VIDEO_SOURCE_JS} from './v22-video-source-manager.js';
 import {VIDEO_LIBRARY_CSS,VIDEO_LIBRARY_JS,handleVideoLibrary} from './v23-video-library-manager.js';
 import {VIDEO38_CSS,VIDEO38_JS} from './v38-video-quick-replace.js';
+import {LIBRARY39_CSS,LIBRARY39_JS} from './v39-library-plan-intelligence.js';
 import {COLLAPSE_CSS,COLLAPSE_JS} from './v24-collapse-manager.js';
 import {ANATOMY35_CSS,ANATOMY35_JS} from './v35-anatomy-hard-reset.js';
 import {MOBILE35_CSS,MOBILE35_JS} from './v35-mobile-overflow-fix.js';
@@ -24,8 +25,8 @@ import {COMMAND36_CSS,COMMAND36_JS} from './v36-universal-command-center.js';
 
 function patch(html){
  let out=html;
- for(const v of ['7.0.1','7.0.2','8.0.0','8.0.1','8.1.0','9.0.0','9.0.1','9.0.2','9.1.0','9.2.0','9.3.0','9.4.0','9.5.0','9.6.0','9.7.0','31.0.0','32.0.0','32.0.1','33.0.0','34.0.0','35.0.0','35.0.1','35.0.2','35.0.3','36.0.0','36.1.0','37.0.0'])out=out.replaceAll(v,SYSTEM_VERSION);
- out=out.replace('</style>',CSS+HISTORY_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+EQUIPMENT_LIBRARY_CSS+LIBRARY_INDEX_CSS+VIDEO_SOURCE_CSS+VIDEO_LIBRARY_CSS+VIDEO38_CSS+COLLAPSE_CSS+ANATOMY35_CSS+MOBILE35_CSS+COMPLETION31_CSS+TIMER37_CSS+OPS32_CSS+WARMUP33_CSS+COMMAND36_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+RESPONSIVE_JS+'</script><script>'+EQUIPMENT_LIBRARY_JS+'</script><script>'+LIBRARY_INDEX_JS+'</script><script>'+VIDEO_SOURCE_JS+'</script><script>'+VIDEO_LIBRARY_JS+'</script><script>'+VIDEO38_JS+'</script><script>'+COLLAPSE_JS+'</script><script>'+ANATOMY35_JS+'</script><script>'+MOBILE35_JS+'</script><script>'+COMPLETION31_JS+'</script><script>'+TIMER37_JS+'</script><script>'+NAV31_GUARD_JS+'</script><script>'+OPS32_JS+'</script><script>'+WARMUP33_JS+'</script><script>'+COMMAND36_JS+'</script></body>');
+ for(const v of ['7.0.1','7.0.2','8.0.0','8.0.1','8.1.0','9.0.0','9.0.1','9.0.2','9.1.0','9.2.0','9.3.0','9.4.0','9.5.0','9.6.0','9.7.0','31.0.0','32.0.0','32.0.1','33.0.0','34.0.0','35.0.0','35.0.1','35.0.2','35.0.3','36.0.0','36.1.0','37.0.0','38.0.0','38.0.1','38.0.2','38.0.3'])out=out.replaceAll(v,SYSTEM_VERSION);
+ out=out.replace('</style>',CSS+HISTORY_CSS+RESPONSIVE_CSS+LAYOUT_HOTFIX_CSS+EQUIPMENT_LIBRARY_CSS+LIBRARY_INDEX_CSS+VIDEO_SOURCE_CSS+VIDEO_LIBRARY_CSS+VIDEO38_CSS+LIBRARY39_CSS+COLLAPSE_CSS+ANATOMY35_CSS+MOBILE35_CSS+COMPLETION31_CSS+TIMER37_CSS+OPS32_CSS+WARMUP33_CSS+COMMAND36_CSS+'</style>').replace('</body>','<script>'+CORE_JS+'</script><script>'+HISTORY_JS+'</script><script>'+RESPONSIVE_JS+'</script><script>'+EQUIPMENT_LIBRARY_JS+'</script><script>'+LIBRARY_INDEX_JS+'</script><script>'+VIDEO_SOURCE_JS+'</script><script>'+VIDEO_LIBRARY_JS+'</script><script>'+VIDEO38_JS+'</script><script>'+LIBRARY39_JS+'</script><script>'+COLLAPSE_JS+'</script><script>'+ANATOMY35_JS+'</script><script>'+MOBILE35_JS+'</script><script>'+COMPLETION31_JS+'</script><script>'+TIMER37_JS+'</script><script>'+NAV31_GUARD_JS+'</script><script>'+OPS32_JS+'</script><script>'+WARMUP33_JS+'</script><script>'+COMMAND36_JS+'</script></body>');
  out=out.replace("const $=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)]","const Q=s=>document.querySelector(s),QA=s=>[...document.querySelectorAll(s)]");
  out=out.replace("nav=n=>$('#nav button,#mobileNav button').find","nav=n=>QA('#nav button,#mobileNav button').find");
  out=out.replaceAll("const v=$('#view-anatomy')","const v=Q('#view-anatomy')");
