@@ -363,3 +363,11 @@ test('filtered gym result groups open automatically so search matches are visibl
  assert.match(shell,/items===HOME_EQUIPMENT\|\|items!==GYM_EQUIPMENT/);
  assert.match(shell,/db41-gym-results/);
 });
+
+
+test('v47.9.6 desktop workout uses the available workspace without breaking mobile contracts',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ assert.match(shell,/max-width:1440px/);
+ assert.match(shell,/db41-today-grid/);
+ assert.match(shell,/@media\(min-width:1100px\)/);
+});
