@@ -1,6 +1,6 @@
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
 
-export const PLATFORM40_VERSION='40.0.0';
+export const PLATFORM40_VERSION='42.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const readBody=async req=>{try{return await req.json()}catch{return {}}};
 const now=()=>new Date().toISOString();
@@ -81,6 +81,16 @@ async function ensurePlanState(env,userId){
  return await db.prepare('SELECT * FROM coach_plan_state WHERE user_id=?').bind(userId).first();
 }
 
+async function syncPlanState(env,state,userId){
+ const week=weekFrom(state.cycle_start),phase=phaseFor(week);
+ if(Number(state.week_number)!==week||state.phase!==phase.name){
+  await ensureDb(env).prepare('UPDATE coach_plan_state SET week_number=?,phase=?,updated_at=? WHERE user_id=?').bind(week,phase.name,now(),userId).run();
+  await ensureDb(env).prepare('INSERT INTO coach_adaptations(id,user_id,created_at,week_number,phase,event_type,reason,evidence_json,change_json,safety_class) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),userId,now(),week,phase.name,'cycle-state-change','12-week cycle advanced to a new week or phase.',JSON.stringify({cycleStart:state.cycle_start}),JSON.stringify({week,phase:phase.name}),'normal').run();
+  return {...state,week_number:week,phase:phase.name};
+ }
+ return state;
+}
+
 function readinessAdjustment(metrics){
  let score=metrics?.readiness==null?7:Number(metrics.readiness),reason=[];
  if(metrics?.sleep_hours!=null&&Number(metrics.sleep_hours)<6){score-=1.5;reason.push('sleep below 6 hours')}
@@ -138,7 +148,7 @@ export async function handleV40Api(req,env,url){
  if(url.pathname==='/api/v40/me'&&req.method==='GET')return json({ok:true,...await getProfile(env,a.id),latestMetrics:await latestMetrics(env,a.id)});
  if(url.pathname==='/api/v40/profile'&&req.method==='PUT')return updateProfile(req,env,a);
  if(url.pathname==='/api/v40/metrics'&&req.method==='POST')return addMetric(req,env,a);
- if(url.pathname==='/api/v40/plan'&&req.method==='GET'){const state=await ensurePlanState(env,a.id),profile=await getProfile(env,a.id),metrics=await latestMetrics(env,a.id);return json({ok:true,...buildPlan(state,profile,metrics)})}
+ if(url.pathname==='/api/v40/plan'&&req.method==='GET'){let state=await ensurePlanState(env,a.id);state=await syncPlanState(env,state,a.id);const profile=await getProfile(env,a.id),metrics=await latestMetrics(env,a.id);return json({ok:true,...buildPlan(state,profile,metrics)})}
  return json({error:'Not found.'},404);
 }
 
