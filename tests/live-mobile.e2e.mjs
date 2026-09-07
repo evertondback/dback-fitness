@@ -1,10 +1,30 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {SYSTEM_VERSION} from '../src/system-version.js';
 
 const BASE=process.env.DBACK_LIVE_URL||'https://dback-fitness.dback.workers.dev';
 const OUT='artifacts/mobile-qa';
 await mkdir(OUT,{recursive:true});
+
+async function waitForProductionVersion(){
+  const deadline=Date.now()+120000;
+  let last='';
+  while(Date.now()<deadline){
+    try{
+      const root=await fetch(BASE,{headers:{'cache-control':'no-cache'}});
+      const build=root.headers.get('x-dback-build')||'';
+      const health=await fetch(`${BASE}/api/v40/health`,{headers:{'cache-control':'no-cache'}});
+      const payload=health.ok?await health.json():{};
+      last=`root=${root.status} build=${build||'<missing>'} health=${health.status} api=${payload.version||'<missing>'}`;
+      if(root.ok&&health.ok&&build===SYSTEM_VERSION&&payload.version===SYSTEM_VERSION)return;
+    }catch(e){last=e.message}
+    await new Promise(r=>setTimeout(r,3000));
+  }
+  throw new Error(`Production version attestation failed. Expected ${SYSTEM_VERSION}; last observed ${last}`);
+}
+
+await waitForProductionVersion();
 
 const profiles=[
   {name:'iphone-390',viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true},
@@ -47,6 +67,7 @@ for(const profile of profiles){
   try{
     const res=await page.goto(BASE,{waitUntil:'networkidle',timeout:60000});
     assert.ok(res&&res.ok(),`${profile.name}: live site failed to load`);
+    assert.equal(res.headers()['x-dback-build'],SYSTEM_VERSION,`${profile.name}: live root build header is not the repository system version`);
     await page.screenshot({path:`${OUT}/${profile.name}-home.png`,fullPage:true});
     await noHorizontalOverflow(page,`${profile.name} home`);
 
@@ -114,4 +135,4 @@ for(const profile of profiles){
 }
 
 await browser.close();
-if(failures.length){console.error(failures.join('\n'));process.exitCode=1}else{console.log('Live mobile QA passed for 390px, 430px and 768px viewports, including v37 timers/trackers and History anti-flicker stability.')}
+if(failures.length){console.error(failures.join('\n'));process.exitCode=1}else{console.log(`Live mobile QA passed for production build ${SYSTEM_VERSION} at 390px, 430px and 768px viewports, including v37 timers/trackers and History anti-flicker stability.`)}
