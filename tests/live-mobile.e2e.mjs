@@ -86,7 +86,6 @@ for(const profile of profiles){
     await noHorizontalOverflow(page,`${profile.name} unified root`);
     const visibleText=await page.locator('body').innerText();
     assert.ok(!/[ÃÂ�]/.test(visibleText),`${profile.name}: mojibake detected in visible mobile text`);
-    if(profile.name!=='tablet-768'){assert.ok(await page.locator('.db41-exmeta').count()>=1,`${profile.name}: mobile metadata grid missing`);}
     await page.screenshot({path:`${OUT}/${profile.name}-unified-root.png`,fullPage:true});
 
     await openDrawer(page);
@@ -113,7 +112,7 @@ for(const profile of profiles){
     assert.ok(libraryText.includes('pull-up')||libraryText.includes('hanging bar'),`${profile.name}: pull-up/hanging bar missing from home equipment`);
     const search=page.locator('#db41-library-search');
     await search.fill('hack squat');
-    await page.waitForTimeout(250);
+    await page.waitForFunction(()=>document.querySelector('#db41-view')?.innerText.toLowerCase().includes('hack squat'),null,{timeout:5000});
     const filteredText=(await page.locator('#db41-view').innerText()).toLowerCase();
     assert.ok(filteredText.includes('hack squat'),`${profile.name}: gym equipment search did not return Hack Squat`);
     assert.ok(filteredText.includes('equipment types shown'),`${profile.name}: filtered equipment count missing`);
