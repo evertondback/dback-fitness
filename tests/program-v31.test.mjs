@@ -10,7 +10,7 @@ test('canonical program is complete and valid',()=>{
  assert.equal(result.days,7);
  assert.ok(result.totalExercises>=60);
  assert.ok(result.warmupMovements>=15);
- assert.equal(result.version,'36.1.0');
+ assert.equal(result.version,'36.2.0');
 });
 
 test('every day remains a 60 minute standalone session without runaway exercise count',()=>{
@@ -46,7 +46,11 @@ test('targeted gaps are explicitly trained',()=>{
  for(const required of ['Single-Leg Calf Raise','Wall Tibialis Raise','Reverse Crunch','Dumbbell Lateral Lunge','Side-Lying Dumbbell External Rotation','Bodyweight Squat Jump'])assert.ok(names.includes(required),required);
  assert.ok(names.filter(x=>x==='Single-Leg Calf Raise').length>=2,'calves need two direct weekly exposures');
  assert.ok(names.filter(x=>x==='Wall Tibialis Raise').length>=2,'tibialis needs two direct weekly exposures');
- assert.ok(names.filter(x=>x==='Reverse Crunch').length>=2,'direct trunk flexion needs two weekly exposures');
+ assert.ok(names.filter(x=>x==='Reverse Crunch').length>=4,'direct trunk flexion needs at least four weekly exposures');
+ const directAbs=Object.values(PROGRAM31).flatMap(d=>d.exercises).filter(e=>e.category==='core'&&['Reverse Crunch','Hollow Hold'].includes(e.name));
+ const directAbsSets=directAbs.reduce((n,e)=>n+Number(e.sets||0),0);
+ assert.ok(directAbsSets>=15,'direct abdominal work should provide at least 15 programmed sets per week');
+ assert.ok(new Set(Object.entries(PROGRAM31).filter(([,d])=>d.exercises.some(e=>e.name==='Reverse Crunch')).map(([day])=>day)).size>=4,'direct trunk flexion should appear on at least four days');
 });
 
 test('every exercise resolves to usable coaching metadata',()=>{
