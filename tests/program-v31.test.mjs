@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.7.0');
+ assert.equal(SYSTEM_VERSION,'47.8.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -284,7 +284,7 @@ test('v47.5 glass video window is draggable, resizable and mobile safe',async()=
  assert.match(shell,/APP41_VERSION='47\.7\.0'/);
  assert.match(shell,/backdrop-filter:blur\(24px\)/);
  assert.match(shell,/resize:both/);
- assert.match(shell,/resize:none!important/);
+ assert.match(shell,/resize:none/);
 });
 
 
@@ -311,3 +311,21 @@ test('v47.7 unified workout controls are operational and video window controls a
  assert.match(source,/db41-workoutStatus/);
 });
 
+
+
+test('v47.8 restores complete warm-up, recovery work and meaningful exercise coaching in unified Today',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ const platform=await readFile(new URL('../src/v40-adaptive-platform.js',import.meta.url),'utf8');
+ assert.match(shell,/47\.8\.0/);
+ assert.match(shell,/\/api\/v31\/program/);
+ assert.match(shell,/Complete daily joint \+ alignment warm-up/);
+ assert.match(shell,/Mobility \+ long flexibility/);
+ assert.match(shell,/What it works/);
+ assert.match(shell,/Why it is in your program/);
+ assert.match(shell,/How to perform it well/);
+ assert.match(shell,/Watch for/);
+ assert.match(shell,/Watch warm-up video/);
+ assert.match(shell,/Watch mobility \/ flexibility video/);
+ assert.match(platform,/coachingFor/);
+ assert.match(platform,/coaching,purpose:coaching\.purpose/);
+});

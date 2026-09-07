@@ -1,5 +1,6 @@
 import {HOME_EQUIPMENT_CATALOG,GYM_EQUIPMENT_CATALOG,equipmentNamesForMode} from './v47-equipment-catalog.js';
 import {PROGRAM31,DAY_ORDER} from './v31-program-core.js';
+import {coachingFor} from './v36-coaching.js';
 
 export const PLATFORM40_VERSION='47.0.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
@@ -175,7 +176,7 @@ function environmentExercise(e,profile,environment){
 function buildPlan(state,profile,metrics,environment='gym',readyOverride=null){
  const week=weekFrom(state.cycle_start),phase=phaseFor(week),ready=readyOverride||readinessAdjustment(metrics),program={};
  const goals=profile.profile.goals||[];const goalContext=goals.length?goals.map(g=>typeof g==='string'?g:(g.name||g.key||'goal')).join(', '):'general strength, muscle, movement quality and healthspan';
- for(const day of DAY_ORDER){const src=PROGRAM31[day];program[day]={...src,purpose:DAY_PURPOSE[day],weekPurpose:`${phase.name}: ${phase.intent}`,adaptationMode:ready.mode,exercises:src.exercises.map((e,i)=>{const adapted=environmentExercise(e,profile,environment);return {...adapted,purpose:adapted.purpose||exercisePurpose(adapted),priority:i<3?'primary':'support',adaptive:{loadFactor:Number((phase.load*ready.load).toFixed(2)),volumeFactor:Number(ready.volume.toFixed(2)),rirAdjustment:phase.rirDelta+ready.rir,rule:'Change one meaningful progression variable at a time unless safety or recovery requires regression.'}}})}}
+ for(const day of DAY_ORDER){const src=PROGRAM31[day];program[day]={...src,purpose:DAY_PURPOSE[day],weekPurpose:`${phase.name}: ${phase.intent}`,adaptationMode:ready.mode,exercises:src.exercises.map((e,i)=>{const adapted=environmentExercise(e,profile,environment),coaching=coachingFor(adapted);return {...adapted,coaching,purpose:coaching.purpose||adapted.purpose||exercisePurpose(adapted),priority:i<3?'primary':'support',adaptive:{loadFactor:Number((phase.load*ready.load).toFixed(2)),volumeFactor:Number(ready.volume.toFixed(2)),rirAdjustment:phase.rirDelta+ready.rir,rule:'Change one meaningful progression variable at a time unless safety or recovery requires regression.'}}})}}
  const activeCatalog=environment==='home'?HOME_EQUIPMENT_CATALOG:GYM_EQUIPMENT_CATALOG;
  return {version:PLATFORM40_VERSION,environment:{mode:environment,profileEquipment:equipmentNames(profile,environment),catalogCount:activeCatalog.length,catalog:activeCatalog},cycle:{cycleNumber:state.cycle_number||1,week,phase:phase.name,phaseIntent:phase.intent,goalContext},readiness:ready,guardrails:{noDiagnosis:true,noAutomaticMedicalClaims:true,painRule:'Sharp, radiating or neurologic symptoms stop the movement and require appropriate clinical evaluation.',progressionRule:'Progress only when technique, recovery and recent performance support it.',sexUse:'Sex selection is stored when relevant to physiology or reference ranges; training changes are driven primarily by goals, performance, recovery, measurements, equipment and constraints rather than stereotypes.'},program};
 }
