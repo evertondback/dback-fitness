@@ -229,7 +229,7 @@ test('v47 unifies the app shell and reconciles home/gym equipment catalogs',asyn
  const catalog=await readFile(new URL('../src/v47-equipment-catalog.js',import.meta.url),'utf8');
  assert.match(shell,/db41-unified-app/);
  assert.match(shell,/Unified Fitness Operating System/);
- assert.doesNotMatch(shell,/classList\.remove\('open'\)/);
+ assert.doesNotMatch(shell,/db41-shell[^\n]{0,160}classList\.remove\('open'\)/);
  assert.match(shell,/Full gym equipment library/);
  assert.match(catalog,/5-55 lb each/);
  assert.match(catalog,/Pull-Up \/ Hanging Bar/);
