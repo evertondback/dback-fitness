@@ -107,6 +107,14 @@ for(const profile of profiles){
     assert.ok(libraryText.includes('5')&&libraryText.includes('55'),`${profile.name}: 5-55 lb home dumbbell range missing`);
     assert.ok(libraryText.includes('floor mat'),`${profile.name}: floor mat missing from home equipment`);
     assert.ok(libraryText.includes('pull-up')||libraryText.includes('hanging bar'),`${profile.name}: pull-up/hanging bar missing from home equipment`);
+    const search=page.locator('#db41-library-search');
+    await search.fill('hack squat');
+    await page.waitForTimeout(250);
+    const filteredText=(await page.locator('#db41-view').innerText()).toLowerCase();
+    assert.ok(filteredText.includes('hack squat'),`${profile.name}: gym equipment search did not return Hack Squat`);
+    assert.ok(filteredText.includes('equipment types shown'),`${profile.name}: filtered equipment count missing`);
+    await page.locator('#db41-library-clear').click();
+    await page.waitForTimeout(200);
     await page.screenshot({path:`${OUT}/${profile.name}-equipment-library.png`,fullPage:true});
 
     await shellNav(page,'Profile');

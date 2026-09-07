@@ -114,7 +114,7 @@ test('runtime reconciliation uses authoritative live D1 column names',async()=>{
 });
 
 test('single system version is used by production runtime',async()=>{
- assert.equal(SYSTEM_VERSION,'47.5.0');
+ assert.equal(SYSTEM_VERSION,'47.6.0');
  const production=await readFile(new URL('../src/worker-production.js',import.meta.url),'utf8');
  const runtime=await readFile(new URL('../src/worker-v10.js',import.meta.url),'utf8');
  assert.match(production,/SYSTEM_VERSION as PRODUCTION_VERSION/);
@@ -285,4 +285,12 @@ test('v47.5 glass video window is draggable, resizable and mobile safe',async()=
  assert.match(shell,/backdrop-filter:blur\(24px\)/);
  assert.match(shell,/resize:both/);
  assert.match(shell,/resize:none!important/);
+});
+
+
+test('v47.6 equipment library is searchable and category-filterable inside the unified shell',async()=>{
+ const shell=await readFile(new URL('../src/v41-fitness-app-shell.js',import.meta.url),'utf8');
+ for(const token of ['db41-library-search','db41-library-category','db41-library-clear','filteredGymEquipment','Find gym equipment','Clear filters'])assert.ok(shell.includes(token),token);
+ assert.match(shell,/libraryQuery/);
+ assert.match(shell,/libraryCategory/);
 });
